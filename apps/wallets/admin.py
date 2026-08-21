@@ -3,6 +3,7 @@
 from django.contrib import admin
 
 from apps.core.admin import BaseModelAdmin
+from apps.currencies.models import Currency
 from apps.wallets.models import Wallet
 
 
@@ -19,8 +20,24 @@ class WalletAdmin(BaseModelAdmin):
         "created_at",
     )
     list_filter = ("currency", "network", "is_active")
-    search_fields = ("name", "currency", "network", "address", "description")
+    search_fields = (
+        "name",
+        "currency__code",
+        "currency__name",
+        "network",
+        "address",
+        "description",
+    )
     ordering = ("name",)
+    list_select_related = ("currency",)
+
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        if obj is None:
+            form.base_fields["currency"].queryset = Currency.objects.filter(
+                is_active=True
+            ).order_by("code")
+        return form
     readonly_fields = ("created_at", "updated_at")
     fieldsets = (
         (

@@ -3,7 +3,7 @@
 from datetime import date as Date
 from decimal import Decimal
 
-from apps.currencies.models import ExchangeRate
+from apps.currencies.models import Currency, ExchangeRate
 
 
 class CurrencyConversionError(Exception):
@@ -22,7 +22,9 @@ class MissingExchangeRateError(CurrencyConversionError):
     """Raised when no eligible direct or reverse exchange rate exists."""
 
 
-def _normalize_currency(currency: str) -> str:
+def _normalize_currency(currency: str | Currency) -> str:
+    if isinstance(currency, Currency):
+        return currency.code
     if not isinstance(currency, str):
         raise InvalidCurrencyError("Currency must be a string.")
 
@@ -45,8 +47,8 @@ def _to_decimal(amount: Decimal | int) -> Decimal:
 def convert_amount(
     *,
     amount: Decimal | int,
-    from_currency: str,
-    to_currency: str,
+    from_currency: str | Currency,
+    to_currency: str | Currency,
     date: Date,
 ) -> Decimal:
     """Convert an amount using the latest active rate effective by a given date."""
@@ -61,8 +63,8 @@ def convert_amount(
 
     direct_rate = (
         ExchangeRate.objects.filter(
-            base_currency=source,
-            target_currency=target,
+            base_currency__code=source,
+            target_currency__code=target,
             effective_date__lte=date,
             is_active=True,
         )
@@ -75,8 +77,8 @@ def convert_amount(
 
     reverse_rate = (
         ExchangeRate.objects.filter(
-            base_currency=target,
-            target_currency=source,
+            base_currency__code=target,
+            target_currency__code=source,
             effective_date__lte=date,
             is_active=True,
         )

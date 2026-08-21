@@ -8,7 +8,7 @@ from django.test import RequestFactory, TestCase
 
 from apps.core.admin import dashboard_callback
 from apps.core.models import AuditLog, User
-from apps.currencies.models import ExchangeRate
+from apps.currencies.models import Currency, ExchangeRate
 from apps.credits.models import CreditBalance, CreditPurchase, CustomerCreditAllocation
 from apps.customers.models import Customer
 from apps.customers.admin import CustomerAdmin
@@ -30,7 +30,7 @@ class AuditSignalTests(TestCase):
     def test_updating_wallet_creates_update_audit_log(self):
         wallet = Wallet.objects.create(
             name="Main Wallet",
-            currency="USDT",
+            currency=Currency.objects.get(code="USDT"),
             network="TRC20",
             address="audit-test-wallet-address",
         )
@@ -86,7 +86,7 @@ class DashboardTests(TestCase):
         provider = Provider.objects.create(name="Provider", slug="provider")
         wallet = Wallet.objects.create(
             name="Dashboard Wallet",
-            currency="USD",
+            currency=Currency.objects.get(code="USD"),
             network="Internal",
             address="dashboard-test-wallet-address",
         )
@@ -96,7 +96,7 @@ class DashboardTests(TestCase):
             name="Active Purchase",
             credit_amount_usd=Decimal("100.00"),
             paid_amount=Decimal("100.00"),
-            paid_currency="USD",
+            paid_currency=Currency.objects.get(code="USD"),
             exchange_rate=Decimal("1.00"),
         )
         CreditBalance.objects.create(
@@ -154,14 +154,14 @@ class DashboardTests(TestCase):
         )
         conversion_date = date(2026, 8, 21)
         ExchangeRate.objects.create(
-            base_currency="USDT",
-            target_currency="USD",
+            base_currency=Currency.objects.get(code="USDT"),
+            target_currency=Currency.objects.get(code="USD"),
             rate=Decimal("1.00"),
             effective_date=date(2026, 8, 1),
         )
         ExchangeRate.objects.create(
-            base_currency="EUR",
-            target_currency="USD",
+            base_currency=Currency.objects.get(code="EUR"),
+            target_currency=Currency.objects.get(code="USD"),
             rate=Decimal("1.20"),
             effective_date=date(2026, 8, 1),
         )
@@ -212,7 +212,7 @@ class CustomerAdminTests(TestCase):
         self.provider = Provider.objects.create(name="Admin Provider", slug="admin-provider")
         self.wallet = Wallet.objects.create(
             name="Admin Wallet",
-            currency="USD",
+            currency=Currency.objects.get(code="USD"),
             network="Internal",
             address="customer-admin-wallet-address",
         )
@@ -222,7 +222,7 @@ class CustomerAdminTests(TestCase):
             name="Admin Purchase",
             credit_amount_usd=Decimal("200.00"),
             paid_amount=Decimal("200.00"),
-            paid_currency="USD",
+            paid_currency=Currency.objects.get(code="USD"),
             exchange_rate=Decimal("1.00"),
         )
         CreditBalance.objects.create(purchase=purchase, used_credit_usd=Decimal("0"))

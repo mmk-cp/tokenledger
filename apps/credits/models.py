@@ -8,6 +8,7 @@ from django.db import models, transaction
 from django.utils import timezone
 
 from apps.core.models import TimeStampedModel
+from apps.currencies.models import Currency
 from apps.providers.models import APIEndpoint, Provider
 from apps.wallets.models import Wallet
 
@@ -48,7 +49,11 @@ class CreditPurchase(TimeStampedModel):
         decimal_places=8,
         validators=[MinValueValidator(Decimal("0.00000001"))],
     )
-    paid_currency = models.CharField(max_length=20, db_index=True)
+    paid_currency = models.ForeignKey(
+        Currency,
+        on_delete=models.PROTECT,
+        related_name="credit_purchases",
+    )
     exchange_rate = models.DecimalField(
         max_digits=18,
         decimal_places=8,

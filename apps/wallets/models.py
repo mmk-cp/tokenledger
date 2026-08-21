@@ -3,13 +3,18 @@
 from django.db import models
 
 from apps.core.models import TimeStampedModel
+from apps.currencies.models import Currency
 
 
 class Wallet(TimeStampedModel):
     """A cryptocurrency wallet owned or controlled by the operator."""
 
     name = models.CharField(max_length=200)
-    currency = models.CharField(max_length=20, db_index=True)
+    currency = models.ForeignKey(
+        Currency,
+        on_delete=models.PROTECT,
+        related_name="wallets",
+    )
     network = models.CharField(max_length=50, db_index=True)
     address = models.CharField(max_length=255, unique=True)
     description = models.TextField(blank=True)
@@ -20,7 +25,10 @@ class Wallet(TimeStampedModel):
         verbose_name = "Wallet"
         verbose_name_plural = "Wallets"
         indexes = [
-            models.Index(fields=("currency", "network", "is_active")),
+            models.Index(
+                fields=("currency", "network", "is_active"),
+                name="wallets_wal_currenc_8bcacf_idx",
+            ),
         ]
 
     def __str__(self) -> str:

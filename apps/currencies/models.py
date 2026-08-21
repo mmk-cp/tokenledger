@@ -9,11 +9,51 @@ from django.db import models
 from apps.core.models import TimeStampedModel
 
 
+class Currency(TimeStampedModel):
+    """A dynamic fiat or cryptocurrency available to TokenLedger."""
+
+    class CurrencyType(models.TextChoices):
+        FIAT = "FIAT", "Fiat"
+        CRYPTO = "CRYPTO", "Crypto"
+
+    code = models.CharField(max_length=20, unique=True)
+    name = models.CharField(max_length=100)
+    symbol = models.CharField(max_length=20, blank=True)
+    currency_type = models.CharField(
+        max_length=10,
+        choices=CurrencyType.choices,
+        db_index=True,
+    )
+    decimal_places = models.PositiveSmallIntegerField(default=2)
+    is_active = models.BooleanField(default=True, db_index=True)
+
+    class Meta:
+        ordering = ("code",)
+        verbose_name = "Currency"
+        verbose_name_plural = "Currencies"
+
+    def save(self, *args, **kwargs):
+        self.code = self.code.strip().upper()
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return self.code
+
+
 class ExchangeRate(TimeStampedModel):
     """A manually entered exchange rate effective on a specific date."""
 
-    base_currency = models.CharField(max_length=20)
-    target_currency = models.CharField(max_length=20)
+    base_currency = models.ForeignKey(
+        Currency,
+        on_delete=models.PROTECT,
+        related_name="base_exchange_rates",
+    )
+    target_currency = models.ForeignKey(
+        Currency,
+        on_delete=models.PROTECT,
+        related_name="target_exchange_rates",
+    )
     rate = models.DecimalField(
         max_digits=24,
         decimal_places=12,
@@ -28,14 +68,17 @@ class ExchangeRate(TimeStampedModel):
         verbose_name = "Exchange Rate"
         verbose_name_plural = "Exchange Rates"
         indexes = [
-            models.Index(fields=("base_currency", "target_currency", "effective_date")),
+            models.Index(
+                fields=("base_currency", "target_currency", "effective_date"),
+                name="currencies__base_cu_4607f0_idx",
+            ),
         ]
 
     def clean(self):
         super().clean()
         errors = {}
         if self.base_currency and self.target_currency:
-            if self.base_currency.strip().upper() == self.target_currency.strip().upper():
+            if self.base_currency_id == self.target_currency_id:
                 errors["target_currency"] = (
                     "Base currency and target currency must be different."
                 )
@@ -43,8 +86,6 @@ class ExchangeRate(TimeStampedModel):
             raise ValidationError(errors)
 
     def save(self, *args, **kwargs):
-        self.base_currency = self.base_currency.strip().upper()
-        self.target_currency = self.target_currency.strip().upper()
         self.full_clean()
         super().save(*args, **kwargs)
 

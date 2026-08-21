@@ -7,6 +7,7 @@ from django.db.models import F, Func, IntegerField, Value
 from django.utils import timezone
 
 from apps.core.admin import BaseModelAdmin
+from apps.currencies.models import Currency
 from apps.credits.models import (
     CreditBalance,
     CreditPurchase,
@@ -50,14 +51,20 @@ class CreditPurchaseAdmin(BaseModelAdmin):
         "credit_amount_usd",
         "paid_amount",
         "paid_currency",
+        "exchange_rate",
         "status",
         "purchase_date",
         "expire_date",
     )
     list_filter = ("provider", "status", "paid_currency", "purchase_date")
-    search_fields = ("name", "provider__name")
+    search_fields = (
+        "name",
+        "provider__name",
+        "paid_currency__code",
+        "paid_currency__name",
+    )
     ordering = ("-purchase_date", "-created_at")
-    list_select_related = ("provider", "endpoint", "wallet")
+    list_select_related = ("provider", "endpoint", "wallet", "paid_currency")
     readonly_fields = ("created_at", "updated_at")
     fieldsets = (
         (
@@ -87,6 +94,14 @@ class CreditPurchaseAdmin(BaseModelAdmin):
         ("Notes", {"fields": ("notes",)}),
         ("Timestamps", {"fields": ("created_at", "updated_at")}),
     )
+
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        if obj is None:
+            form.base_fields["paid_currency"].queryset = Currency.objects.filter(
+                is_active=True
+            ).order_by("code")
+        return form
 
 
 @admin.register(CreditBalance)
