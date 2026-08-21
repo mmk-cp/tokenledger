@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
-from unfold.widgets import UnfoldAdminPasswordWidget
+from unfold.widgets import UnfoldAdminTextInputWidget
 
 from apps.core.admin import BaseModelAdmin
 from apps.customer_credentials.forms import CustomerCredentialAdminForm
@@ -29,7 +29,8 @@ class CustomerCredentialAdmin(BaseModelAdmin):
         if obj is not None and not request.user.has_perm("customer_credentials.view_sensitive_api_key"):
             form.base_fields.pop("api_key", None)
         elif obj is not None:
-            form.base_fields["api_key"].widget = UnfoldAdminPasswordWidget(render_value=True)
+            form.base_fields["api_key"].widget = UnfoldAdminTextInputWidget()
+            form.base_fields["api_key"].initial = obj.api_key
         return form
 
     def get_fieldsets(self, request, obj=None):

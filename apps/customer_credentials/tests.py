@@ -104,8 +104,37 @@ class APIKeyAdminSecurityTests(TestCase):
 
     def test_authorized_admin_can_retrieve_keys_on_detail(self):
         self.client.force_login(self.user("authorized", sensitive=True))
-        self.assertContains(self.client.get(f"/admin/providers/apiendpoint/{self.endpoint.pk}/change/"), self.raw_endpoint_key)
-        self.assertContains(self.client.get(f"/admin/customer_credentials/customercredential/{self.credential.pk}/change/"), self.raw_customer_key)
+        endpoint_response = self.client.get(f"/admin/providers/apiendpoint/{self.endpoint.pk}/change/")
+        credential_response = self.client.get(f"/admin/customer_credentials/customercredential/{self.credential.pk}/change/")
+        endpoint_form = endpoint_response.context["adminform"].form
+        credential_form = credential_response.context["adminform"].form
+        self.assertEqual(endpoint_form["api_key"].value(), self.raw_endpoint_key)
+        self.assertEqual(credential_form["api_key"].value(), self.raw_customer_key)
+        self.assertEqual(endpoint_form.fields["api_key"].widget.input_type, "text")
+        self.assertEqual(credential_form.fields["api_key"].widget.input_type, "text")
+        self.assertContains(endpoint_response, self.raw_endpoint_key)
+        self.assertContains(credential_response, self.raw_customer_key)
+
+    def test_blank_authorized_edit_preserves_existing_key(self):
+        self.client.force_login(self.user("blank-edit", sensitive=True))
+        response = self.client.post(
+            f"/admin/customer_credentials/customercredential/{self.credential.pk}/change/",
+            {
+                "customer": self.customer.pk,
+                "provider": self.provider.pk,
+                "endpoint": self.endpoint.pk,
+                "credit_allocation": "",
+                "status": CustomerCredential.Status.ACTIVE,
+                "api_key": "",
+                "start_date": self.credential.start_date.isoformat(),
+                "expire_date": "",
+                "notes": "",
+                "_save": "Save",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.credential.refresh_from_db()
+        self.assertEqual(self.credential.api_key, self.raw_customer_key)
 
     def test_list_pages_are_always_masked(self):
         self.client.force_login(self.user("list-authorized", sensitive=True))

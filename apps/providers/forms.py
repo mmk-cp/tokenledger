@@ -22,6 +22,12 @@ class APIEndpointAdminForm(forms.ModelForm):
         model = APIEndpoint
         fields = "__all__"
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk and "api_key" in self.fields:
+            self.initial["api_key"] = self.instance.api_key
+            self.fields["api_key"].initial = self.instance.api_key
+
     def clean_api_key(self):
         value = self.cleaned_data.get("api_key")
         if value:
