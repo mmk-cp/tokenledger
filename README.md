@@ -11,7 +11,7 @@ The current foundation includes core identity and audit infrastructure, provider
 - Django Unfold for the complete administration interface
 - MySQL with mysqlclient
 - django-environ for environment-based configuration
-- cryptography for encrypted upstream API keys
+- Django permissions for controlled API-key visibility
 - WhiteNoise for production static-file serving
 - Gunicorn as the production WSGI server
 
@@ -38,11 +38,7 @@ The current foundation includes core identity and audit infrastructure, provider
 
 4. Create a MySQL database and user matching the `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, and `DB_PORT` values in `.env`.
 
-   Set `API_KEY_ENCRYPTION_KEY` to a stable Fernet key before creating API endpoints. Generate one with:
-
-   ```bash
-   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-   ```
+   API keys are operational credentials stored in the database. Full values are restricted by the `view_sensitive_api_key` model permissions; grant them only to trusted administrators.
 
 5. Apply Django's built-in migrations and create an administrator:
 
@@ -67,6 +63,23 @@ The Unfold administration interface is available at <http://127.0.0.1:8000/admin
 
 Set `DJANGO_SETTINGS_MODULE=config.settings.production` in a production environment. Static assets are collected into `staticfiles/`; uploaded files are stored under `media/` by default and should use durable external storage in production deployments.
 
+## Production deployment
+
+Production requires a long random `SECRET_KEY`, non-empty `ALLOWED_HOSTS`, MySQL credentials, HTTPS, and `DEBUG=False`. Configure `CSRF_TRUSTED_ORIGINS` with complete HTTPS origins for public admin hosts. Production enables secure cookies, HTTPS redirection, HSTS, MIME sniffing protection, same-origin referrer policy, and clickjacking protection.
+
+Required variables are `SECRET_KEY`, `ALLOWED_HOSTS`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, and `DB_PORT`. Optional settings include `TIME_ZONE`, `LOG_LEVEL`, `DB_CONN_MAX_AGE`, `SECURE_SSL_REDIRECT`, and HSTS controls.
+
+Validate releases with:
+
+```bash
+DJANGO_SETTINGS_MODULE=config.settings.production python manage.py check --deploy
+python manage.py makemigrations --check --dry-run
+python manage.py migrate --plan
+python manage.py collectstatic --noinput
+```
+
+Back up MySQL and persistent media independently using encrypted, access-controlled off-host copies. Test restoration regularly and take a verified backup before migrations. Never expose `.env`, backups, logs, or media through static hosting.
+
 ## Docker
 
 1. Copy `.env.example` to `.env` and replace the placeholder secrets. Docker overrides `DB_HOST` with the MySQL service hostname.
@@ -83,7 +96,7 @@ Set `DJANGO_SETTINGS_MODULE=config.settings.production` in a production environm
    docker compose exec web python manage.py createsuperuser
    ```
 
-The web service runs migrations and collects static files before Gunicorn starts. The MySQL data is persisted in the `mysql_data` Docker volume.
+The web service runs migrations and collects static files before Gunicorn starts. MySQL data is persisted in `mysql_data`; uploaded media is persisted in `media_data`. Back up both volumes, and run migrations as a controlled release step when operating multiple replicas.
 
 ## Project layout
 

@@ -27,6 +27,7 @@ TRACKED_MODELS = (
     CustomerCredential,
 )
 DETAILED_MODELS = (
+    APIEndpoint,
     CustomerCredential,
     CreditPurchase,
     CustomerCreditAllocation,
@@ -98,7 +99,7 @@ def audit_model_save(sender, instance, created: bool, **kwargs) -> None:
     if not created and sender in DETAILED_MODELS:
         original = _ORIGINAL_VALUES.pop(id(instance), {})
         current = _field_values(instance)
-        sensitive = {"encrypted_api_key", "api_key"}
+        sensitive = {"api_key"}
         for name, old_value in original.items():
             if old_value != current.get(name):
                 changed[name] = {"old": "changed", "new": "changed"} if name in sensitive else {

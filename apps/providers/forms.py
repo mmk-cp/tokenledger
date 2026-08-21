@@ -12,7 +12,7 @@ class APIEndpointAdminForm(forms.ModelForm):
         label="API key",
         required=False,
         strip=False,
-        widget=forms.PasswordInput(render_value=False),
+        widget=forms.PasswordInput(render_value=True),
         help_text="Required when creating an endpoint. Leave blank to keep the current key.",
     )
 

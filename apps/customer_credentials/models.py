@@ -7,7 +7,7 @@ from django.db import models
 from apps.core.models import TimeStampedModel
 from apps.credits.models import CustomerCreditAllocation
 from apps.customers.models import Customer
-from apps.providers.models import APIEndpoint, EncryptedTextField, Provider
+from apps.providers.models import APIEndpoint, Provider
 
 
 class CustomerCredential(TimeStampedModel):
@@ -26,7 +26,7 @@ class CustomerCredential(TimeStampedModel):
         null=True,
         blank=True,
     )
-    encrypted_api_key = EncryptedTextField(blank=True)
+    api_key = models.TextField(blank=True)
     assigned_credit_usd = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal("0.00"), validators=[MinValueValidator(Decimal("0.00"))])
     cost_price_usd = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal("0.00"), validators=[MinValueValidator(Decimal("0.00"))])
     selling_price_usd = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal("0.00"), validators=[MinValueValidator(Decimal("0.00"))])
@@ -40,7 +40,7 @@ class CustomerCredential(TimeStampedModel):
         verbose_name = "Customer Credential"
         verbose_name_plural = "Customer Credentials"
         indexes = [models.Index(fields=("provider", "status")), models.Index(fields=("expire_date", "status"))]
-        permissions = (("view_sensitive_api_key", "Can view decrypted API keys"),)
+        permissions = (("view_sensitive_api_key", "Can view sensitive API keys"),)
 
     def clean(self):
         super().clean()
@@ -55,8 +55,8 @@ class CustomerCredential(TimeStampedModel):
                 errors["credit_allocation"] = "The allocation must belong to the selected customer."
             if self.provider_id and allocation.provider_id != self.provider_id:
                 errors["credit_allocation"] = "The allocation must belong to the selected provider."
-        if not self.pk and not self.encrypted_api_key:
-            errors["encrypted_api_key"] = "An API key is required when creating a credential."
+        if not self.pk and not self.api_key:
+            errors["api_key"] = "An API key is required when creating a credential."
         if self.expire_date and self.start_date and self.expire_date < self.start_date:
             errors["expire_date"] = "Expiration date cannot be before start date."
         if errors:
@@ -67,8 +67,8 @@ class CustomerCredential(TimeStampedModel):
 
     @property
     def masked_api_key(self):
-        if not self.encrypted_api_key:
+        if not self.api_key:
             return "-"
-        if len(self.encrypted_api_key) <= 8:
-            return "*" * len(self.encrypted_api_key)
-        return f"{self.encrypted_api_key[:4]}{'*' * 12}{self.encrypted_api_key[-4:]}"
+        if len(self.api_key) <= 8:
+            return "*" * len(self.api_key)
+        return f"{self.api_key[:4]}{'*' * 12}{self.api_key[-4:]}"

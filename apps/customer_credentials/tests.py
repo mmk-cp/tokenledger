@@ -2,11 +2,12 @@ from datetime import date
 from decimal import Decimal
 
 from django.contrib import admin
+from django.contrib.auth.models import Permission
 from django.core.exceptions import ValidationError
 from django.db.models.deletion import ProtectedError
 from django.test import RequestFactory, TestCase
 
-from apps.core.models import User
+from apps.core.models import AuditLog, User
 from apps.credits.models import CreditBalance, CreditPurchase, CustomerCreditAllocation
 from apps.customer_credentials.models import CustomerCredential
 from apps.currencies.models import Currency
@@ -28,7 +29,7 @@ class CustomerCredentialAllocationTests(TestCase):
         self.allocation = CustomerCreditAllocation.objects.create(customer=self.customer, credit_purchase=self.purchase, allocated_credit_usd=Decimal("20.00"), selling_price_usd=Decimal("25.00"))
 
     def credential(self, **kwargs):
-        values = dict(customer=self.customer, provider=self.provider, endpoint=self.endpoint, encrypted_api_key="credential-secret", start_date=date.today())
+        values = dict(customer=self.customer, provider=self.provider, endpoint=self.endpoint, api_key="credential-secret", start_date=date.today())
         values.update(kwargs)
         return CustomerCredential(**values)
 
@@ -71,3 +72,61 @@ class CustomerCredentialAllocationTests(TestCase):
         self.assertIn("Active credentials: 1", summary)
         self.assertIn("Assigned credit: 20.00 USD", summary)
         self.assertIn("Next expiration: 2026-09-10", summary)
+
+
+class APIKeyAdminSecurityTests(TestCase):
+    def setUp(self):
+        self.raw_endpoint_key = "sk-endpoint-super-secret"
+        self.raw_customer_key = "sk-customer-super-secret"
+        self.provider = Provider.objects.create(name="Security Provider", slug="security-provider")
+        self.endpoint = APIEndpoint.objects.create(provider=self.provider, name="Security Endpoint", base_url="https://security.example.com", api_key=self.raw_endpoint_key)
+        self.customer = Customer.objects.create(name="Security Customer")
+        self.credential = CustomerCredential.objects.create(customer=self.customer, provider=self.provider, endpoint=self.endpoint, api_key=self.raw_customer_key, start_date=date.today())
+
+    def user(self, username, sensitive=False):
+        user = User.objects.create_user(username=username, email=f"{username}@example.com", password="password", is_staff=True)
+        permissions = Permission.objects.filter(codename__in=(
+            "view_apiendpoint", "change_apiendpoint",
+            "view_customercredential", "change_customercredential",
+        ))
+        user.user_permissions.add(*permissions)
+        if sensitive:
+            user.user_permissions.add(*Permission.objects.filter(codename="view_sensitive_api_key"))
+        return user
+
+    def test_unauthorized_admin_cannot_retrieve_keys(self):
+        self.client.force_login(self.user("restricted"))
+        for url in (
+            f"/admin/providers/apiendpoint/{self.endpoint.pk}/change/",
+            f"/admin/customer_credentials/customercredential/{self.credential.pk}/change/",
+        ):
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200)
+            self.assertNotContains(response, self.raw_endpoint_key)
+            self.assertNotContains(response, self.raw_customer_key)
+
+    def test_authorized_admin_can_retrieve_keys_on_detail(self):
+        self.client.force_login(self.user("authorized", sensitive=True))
+        self.assertContains(self.client.get(f"/admin/providers/apiendpoint/{self.endpoint.pk}/change/"), self.raw_endpoint_key)
+        self.assertContains(self.client.get(f"/admin/customer_credentials/customercredential/{self.credential.pk}/change/"), self.raw_customer_key)
+
+    def test_list_pages_are_always_masked(self):
+        self.client.force_login(self.user("list-authorized", sensitive=True))
+        endpoint_response = self.client.get("/admin/providers/apiendpoint/")
+        credential_response = self.client.get("/admin/customer_credentials/customercredential/")
+        self.assertNotContains(endpoint_response, self.raw_endpoint_key)
+        self.assertNotContains(credential_response, self.raw_customer_key)
+        self.assertContains(endpoint_response, self.endpoint.masked_api_key)
+
+    def test_audit_and_validation_never_include_keys(self):
+        self.endpoint.api_key = "sk-endpoint-replacement"
+        self.endpoint.save()
+        log = AuditLog.objects.filter(model_name="APIEndpoint", action="UPDATE").latest("created_at")
+        self.assertEqual(log.changed_fields["api_key"], {"old": "changed", "new": "changed"})
+        serialized = f"{log.description}{log.changed_fields}"
+        self.assertNotIn(self.raw_endpoint_key, serialized)
+        self.assertNotIn("sk-endpoint-replacement", serialized)
+        invalid = CustomerCredential(customer=self.customer, provider=self.provider, endpoint=self.endpoint, api_key=self.raw_customer_key, start_date=date.today(), expire_date=date(2000, 1, 1))
+        with self.assertRaises(ValidationError) as error:
+            invalid.full_clean()
+        self.assertNotIn(self.raw_customer_key, str(error.exception))

@@ -1,66 +1,9 @@
 """Provider and upstream API endpoint models."""
 
-import base64
-import hashlib
-
-from cryptography.fernet import Fernet, InvalidToken
-from django.conf import settings
-from django.core.exceptions import ImproperlyConfigured, ValidationError
+from django.core.exceptions import ValidationError
 from django.db import models
 
 from apps.core.models import TimeStampedModel
-
-
-class EncryptedTextField(models.TextField):
-    """Encrypt text values before they are written to the database."""
-
-    _prefix = "enc:"
-
-    @staticmethod
-    def _fernet() -> Fernet:
-        configured_key = getattr(settings, "API_KEY_ENCRYPTION_KEY", "")
-        source = configured_key or getattr(settings, "SECRET_KEY", "")
-        if not source:
-            raise ImproperlyConfigured(
-                "API_KEY_ENCRYPTION_KEY or SECRET_KEY must be configured."
-            )
-        try:
-            return Fernet(source.encode())
-        except (ValueError, TypeError):
-            derived_key = base64.urlsafe_b64encode(
-                hashlib.sha256(source.encode()).digest()
-            )
-            return Fernet(derived_key)
-
-    @classmethod
-    def _decrypt(cls, value: str) -> str:
-        if not value or not value.startswith(cls._prefix):
-            return value
-        try:
-            return cls._fernet().decrypt(value[len(cls._prefix) :].encode()).decode()
-        except InvalidToken as exc:
-            raise ImproperlyConfigured(
-                "API key could not be decrypted. Check API_KEY_ENCRYPTION_KEY."
-            ) from exc
-
-    def from_db_value(self, value, expression, connection):
-        return self._decrypt(value) if value is not None else None
-
-    def to_python(self, value):
-        if value is None:
-            return value
-        if isinstance(value, bytes):
-            value = value.decode()
-        if not isinstance(value, str) or not value.startswith(self._prefix):
-            return value
-        return self._decrypt(value)
-
-    def get_prep_value(self, value):
-        value = super().get_prep_value(value)
-        if not value or value.startswith(self._prefix):
-            return value
-        encrypted = self._fernet().encrypt(value.encode()).decode()
-        return f"{self._prefix}{encrypted}"
 
 
 class Provider(TimeStampedModel):
@@ -91,7 +34,7 @@ class APIEndpoint(TimeStampedModel):
     )
     name = models.CharField(max_length=200)
     base_url = models.URLField()
-    api_key = EncryptedTextField()
+    api_key = models.TextField()
     description = models.TextField(blank=True)
     is_active = models.BooleanField(default=True, db_index=True)
 
@@ -100,6 +43,7 @@ class APIEndpoint(TimeStampedModel):
         verbose_name = "API Endpoint"
         verbose_name_plural = "API Endpoints"
         indexes = [models.Index(fields=("provider", "is_active"))]
+        permissions = (("view_sensitive_api_key", "Can view sensitive API keys"),)
 
     def clean(self):
         super().clean()

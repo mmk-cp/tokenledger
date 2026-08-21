@@ -15,7 +15,7 @@ class CustomerCredentialAdmin(BaseModelAdmin):
     readonly_fields = ("masked_api_key_display", "created_at", "updated_at")
     fieldsets = (
         ("Assignment", {"fields": ("customer", "provider", "endpoint", "credit_allocation", "status")} ),
-        ("Credential", {"fields": ("encrypted_api_key", "masked_api_key_display")} ),
+        ("Credential", {"fields": ("api_key", "masked_api_key_display")} ),
         ("Financial Information", {"fields": ("assigned_credit_usd", "cost_price_usd", "selling_price_usd")} ),
         ("Validity", {"fields": ("start_date", "expire_date")} ),
         ("Notes", {"fields": ("notes",)}),
@@ -25,7 +25,7 @@ class CustomerCredentialAdmin(BaseModelAdmin):
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)
         if not request.user.has_perm("customer_credentials.view_sensitive_api_key"):
-            form.base_fields.pop("encrypted_api_key", None)
+            form.base_fields.pop("api_key", None)
         return form
 
     def get_fieldsets(self, request, obj=None):
@@ -35,7 +35,7 @@ class CustomerCredentialAdmin(BaseModelAdmin):
         return tuple(
             (title, {**options, "fields": tuple(
                 field for field in options.get("fields", ())
-                if field != "encrypted_api_key"
+                if field != "api_key"
             )})
             for title, options in fieldsets
         )
