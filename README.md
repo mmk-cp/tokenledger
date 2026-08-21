@@ -1,107 +1,260 @@
 # TokenLedger
 
-TokenLedger is an open-source AI API credit cost management system for resellers. It is intended to manage providers, API endpoints, wallets, purchases, customer allocations, transactions, and profit/loss reporting as the project evolves.
 
-The current foundation includes core identity and audit infrastructure, provider/API endpoint inventory, operator wallet inventory, owner credit-purchase inventory, customer records and allocations, and a manually recorded financial transaction ledger. Automated usage, payment matching, invoicing, and reporting remain intentionally out of scope until their respective implementation steps.
+### Financial Management
+
+
+Track internal financial movements.
+
+
+Features:
+
+
+- Purchase transactions
+- Customer payments
+- Expenses
+- Refunds
+- Adjustments
+- Cash flow visibility
+- Profitability reporting
+
+
+
+
+### Currency Management
+
+
+Support multiple currencies for financial operations.
+
+
+Features:
+
+
+- Fiat currencies
+- Cryptocurrency currencies
+- Custom exchange rates
+- Historical conversion support
+- USD-based financial reporting
+
+
+
+
+### Wallet Management
+
+
+Track operational wallets used for purchasing services.
+
+
+Features:
+
+
+- Multiple wallets
+- Currency and network tracking
+- Transaction movement visibility
+
+
+
+
+### Audit & Security
+
+
+Track important administrative changes.
+
+
+Features:
+
+
+- Automatic audit logging
+- Field-level change history
+- User activity tracking
+- Sensitive credential protection
+- Permission-based API key access
+
+
+
+
+## Dashboard & Reports
+
+
+TokenLedger includes an Unfold-powered Django administration dashboard with:
+
+
+- Revenue overview
+- Cost overview
+- Net cash flow
+- Credit inventory
+- Customer summaries
+- Provider profitability
+- Expiring credits
+- Wallet movements
+
+
+
+
+## What TokenLedger is NOT
+
+
+TokenLedger intentionally does not provide:
+
+
+- AI API proxying
+- Token usage tracking
+- Request forwarding
+- Customer self-service portal
+- Billing automation
+- Payment gateway integration
+
+
+These features can be integrated separately when needed.
+
+
+
 
 ## Technology
 
+
 - Python 3.12
 - Django 5.2 LTS
-- Django Unfold for the complete administration interface
-- MySQL with mysqlclient
-- django-environ for environment-based configuration
-- Django permissions for controlled API-key visibility
-- WhiteNoise for production static-file serving
-- Gunicorn as the production WSGI server
+- Django Unfold administration interface
+- MySQL
+- mysqlclient
+- django-environ
+- WhiteNoise
+- Gunicorn
 
-## Local development
 
-1. Create and activate a virtual environment:
 
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate
-   ```
 
-2. Install dependencies:
+## Architecture
 
-   ```bash
-   pip install -r requirements.txt
-   ```
 
-3. Copy the environment template:
+TokenLedger follows a Django domain-based architecture:
 
-   ```bash
-   cp .env.example .env
-   ```
 
-4. Create a MySQL database and user matching the `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, and `DB_PORT` values in `.env`.
 
-   API keys are operational credentials stored in the database. Full values are restricted by the `view_sensitive_api_key` model permissions; grant them only to trusted administrators.
+apps/
+├── core
+├── providers
+├── wallets
+├── customers
+├── credits
+├── transactions
+├── currencies
+└── customer_credentials
 
-5. Apply Django's built-in migrations and create an administrator:
 
-   ```bash
-   python manage.py migrate
-   python manage.py createsuperuser
-   ```
 
-6. Start the development server:
 
-   ```bash
-   python manage.py runserver
-   ```
 
-The Unfold administration interface is available at <http://127.0.0.1:8000/admin/>.
+## Local Development
 
-## Settings
 
-- `config.settings.development` is the default for local commands.
-- `config.settings.production` enables production security settings and requires `SECRET_KEY`, `ALLOWED_HOSTS`, and MySQL configuration.
-- Common settings live in `config.settings.base`.
+### 1. Create virtual environment
 
-Set `DJANGO_SETTINGS_MODULE=config.settings.production` in a production environment. Static assets are collected into `staticfiles/`; uploaded files are stored under `media/` by default and should use durable external storage in production deployments.
-
-## Production deployment
-
-Production requires a long random `SECRET_KEY`, non-empty `ALLOWED_HOSTS`, MySQL credentials, HTTPS, and `DEBUG=False`. Configure `CSRF_TRUSTED_ORIGINS` with complete HTTPS origins for public admin hosts. Production enables secure cookies, HTTPS redirection, HSTS, MIME sniffing protection, same-origin referrer policy, and clickjacking protection.
-
-Required variables are `SECRET_KEY`, `ALLOWED_HOSTS`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, and `DB_PORT`. Optional settings include `TIME_ZONE`, `LOG_LEVEL`, `DB_CONN_MAX_AGE`, `SECURE_SSL_REDIRECT`, and HSTS controls.
-
-Validate releases with:
 
 ```bash
-DJANGO_SETTINGS_MODULE=config.settings.production python manage.py check --deploy
-python manage.py makemigrations --check --dry-run
-python manage.py migrate --plan
-python manage.py collectstatic --noinput
+python -m venv .venv
+
+
+source .venv/bin/activate
 ```
 
-Back up MySQL and persistent media independently using encrypted, access-controlled off-host copies. Test restoration regularly and take a verified backup before migrations. Never expose `.env`, backups, logs, or media through static hosting.
+### 2. Install dependencies
+```
+pip install -r requirements.txt
+```
+### 3. Configure environment
+cp .env.example .env
 
-## Docker
+Configure MySQL:
 
-1. Copy `.env.example` to `.env` and replace the placeholder secrets. Docker overrides `DB_HOST` with the MySQL service hostname.
+```
+DB_NAME
+DB_USER
+DB_PASSWORD
+DB_HOST
+DB_PORT
+```
 
-2. Build and start the services:
+API credentials are operational credentials stored in the database.
 
-   ```bash
-   docker compose up --build
-   ```
+Access to full API keys is controlled through Django permissions:
 
-3. Create an administrator account:
+view_sensitive_api_key
 
-   ```bash
-   docker compose exec web python manage.py createsuperuser
-   ```
+Only trusted administrators should receive this permission.
 
-The web service runs migrations and collects static files before Gunicorn starts. MySQL data is persisted in `mysql_data`; uploaded media is persisted in `media_data`. Back up both volumes, and run migrations as a controlled release step when operating multiple replicas.
+4. Run migrations
+python manage.py migrate
+5. Create administrator
+python manage.py createsuperuser
+6. Run development server
+python manage.py runserver
 
-## Project layout
+Admin panel:
 
-Domain apps live under the `apps` Python package. Every future model administration class must inherit from `unfold.admin.ModelAdmin`; the project intentionally does not use Django's default `ModelAdmin` styling. MySQL is the only supported database backend.
+http://127.0.0.1:8000/admin/
 
-## License
+Production Deployment
 
-TokenLedger is released under the MIT License. See [LICENSE](LICENSE).
+Production requires:
+
+```
+DEBUG=False
+SECRET_KEY
+ALLOWED_HOSTS
+MySQL configuration
+HTTPS
+```
+
+Production enables:
+
+Secure cookies
+CSRF protection
+HSTS support
+Clickjacking protection
+MIME sniffing protection
+
+Validate deployment:
+
+```
+DJANGO_SETTINGS_MODULE=config.settings.production python manage.py check --deploy
+
+
+python manage.py makemigrations --check --dry-run
+
+
+python manage.py migrate --plan
+
+
+python manage.py collectstatic --noinput
+Docker
+
+Start services:
+
+docker compose up --build
+
+Create administrator:
+
+docker compose exec web python manage.py createsuperuser
+```
+
+Persistent data:
+
+MySQL data: mysql_data
+Uploaded media: media_data
+Project Status
+
+TokenLedger is actively evolving as an internal management platform for AI API resellers.
+
+Current focus areas:
+
+provider management
+customer management
+credit inventory
+financial tracking
+profitability visibility
+operational reporting
+License
+
+TokenLedger is released under the MIT License.
