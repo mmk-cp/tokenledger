@@ -44,6 +44,28 @@
             </div>
         </section>
 
+        <section class="bg-white border border-base-200 p-5 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
+            <h2 class="font-semibold text-base-900 text-lg dark:text-white">Financial Summary Report</h2>
+            <div class="gap-3 grid md:grid-cols-3 xl:grid-cols-4 mt-4 text-sm">
+                <div><p class="text-base-500">Revenue (USD)</p><p class="font-semibold mt-1">{{ financial_report.revenue|floatformat:2 }}</p></div>
+                <div><p class="text-base-500">Costs (USD)</p><p class="font-semibold mt-1">{{ financial_report.costs|floatformat:2 }}</p></div>
+                <div><p class="text-base-500">Net Cash Flow (USD)</p><p class="font-semibold mt-1">{{ financial_report.net_cash_flow|floatformat:2 }}</p></div>
+                <div><p class="text-base-500">Credit Sold (USD)</p><p class="font-semibold mt-1">{{ financial_report.total_credit_sold|floatformat:2 }}</p></div>
+                <div><p class="text-base-500">Total Cost (USD)</p><p class="font-semibold mt-1">{{ financial_report.total_cost|floatformat:2 }}</p></div>
+                <div><p class="text-base-500">Selling Value (USD)</p><p class="font-semibold mt-1">{{ financial_report.total_selling_value|floatformat:2 }}</p></div>
+                <div><p class="text-base-500">Estimated Profit (USD)</p><p class="font-semibold mt-1">{{ financial_report.estimated_profit|floatformat:2 }}</p></div>
+            </div>
+        </section>
+
+        <section class="gap-8 grid lg:grid-cols-3">
+            {% for title, customers in report_customer_sections %}
+                <div class="bg-white border border-base-200 p-5 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
+                    <h2 class="font-semibold text-base-900 text-lg dark:text-white">{{ title }}</h2>
+                    <div class="mt-4 space-y-3 text-sm">{% for customer in customers %}<div class="flex justify-between"><span>{{ customer.name }}</span><span>{{ customer.value|floatformat:2 }}</span></div>{% empty %}<p class="text-base-500">No customer data yet.</p>{% endfor %}</div>
+                </div>
+            {% endfor %}
+        </section>
+
         <section class="gap-8 grid lg:grid-cols-3">
             <div class="bg-white border border-base-200 p-5 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
                 <h2 class="font-semibold text-base-900 text-lg dark:text-white">Recent Transactions</h2>

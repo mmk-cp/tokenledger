@@ -41,6 +41,7 @@ LOCAL_APPS = [
     "apps.transactions.apps.TransactionsConfig",
     "apps.currencies.apps.CurrenciesConfig",
     "apps.billing.apps.BillingConfig",
+    "apps.customer_credentials.apps.CustomerCredentialsConfig",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + LOCAL_APPS

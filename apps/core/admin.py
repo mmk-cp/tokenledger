@@ -242,6 +242,48 @@ def _converted_purchase_cost_total(
     return total
 
 
+def _top_customer_revenue(queryset, conversion_factors):
+    """Aggregate customer revenue in USD using grouped transaction inputs."""
+    totals = {}
+    for row in queryset.values(
+        "customer_id",
+        "customer__name",
+        "amount",
+        "currency__code",
+        "converted_amount",
+        "converted_currency__code",
+        "transaction_date",
+    ).iterator():
+        if row["customer_id"] is None:
+            continue
+        if (
+            row["converted_amount"] is not None
+            and row["converted_currency__code"] == DASHBOARD_CURRENCY
+        ):
+            value = row["converted_amount"]
+        else:
+            key = (row["currency__code"], row["transaction_date"])
+            if key not in conversion_factors:
+                try:
+                    conversion_factors[key] = convert_amount(
+                        amount=Decimal("1"),
+                        from_currency=key[0],
+                        to_currency=DASHBOARD_CURRENCY,
+                        date=key[1],
+                    )
+                except CurrencyConversionError:
+                    conversion_factors[key] = None
+            factor = conversion_factors[key]
+            if factor is None:
+                continue
+            value = row["amount"] * factor
+        entry = totals.setdefault(
+            row["customer_id"], {"name": row["customer__name"], "value": Decimal("0")}
+        )
+        entry["value"] += value
+    return sorted(totals.values(), key=lambda item: item["value"], reverse=True)[:5]
+
+
 def dashboard_callback(request: HttpRequest, context: dict) -> dict:
     """Build the authenticated staff dashboard from efficient ORM aggregates."""
     if not request.user.is_authenticated or not request.user.is_staff:
@@ -296,6 +338,31 @@ def dashboard_callback(request: HttpRequest, context: dict) -> dict:
     profit = CustomerCreditAllocation.objects.aggregate(
         total=Sum("selling_price_usd") - Sum("cost_price_usd")
     )["total"] or 0
+    top_allocated = list(
+        CustomerCreditAllocation.objects.values("customer__name")
+        .annotate(total=Sum("allocated_credit_usd"))
+        .order_by("-total")[:5]
+    )
+    top_profit = list(
+        CustomerCreditAllocation.objects.values("customer__name")
+        .annotate(total=Sum("selling_price_usd") - Sum("cost_price_usd"))
+        .order_by("-total")[:5]
+    )
+    top_allocated = [
+        {"name": row["customer__name"], "value": row["total"]}
+        for row in top_allocated
+    ]
+    top_profit = [
+        {"name": row["customer__name"], "value": row["total"]}
+        for row in top_profit
+    ]
+    top_revenue = _top_customer_revenue(
+        Transaction.objects.filter(
+            transaction_type=Transaction.TransactionType.CUSTOMER_PAYMENT,
+            direction=Transaction.Direction.IN,
+        ),
+        conversion_factors,
+    )
     today = timezone.localdate()
     expiration_queryset = CustomerCreditAllocation.objects.filter(
         status=CustomerCreditAllocation.Status.ACTIVE,
@@ -358,6 +425,25 @@ def dashboard_callback(request: HttpRequest, context: dict) -> dict:
                 },
                 {"label": "Estimated Profit (USD)", "value": f"{profit:,.2f}"},
             ],
+            "financial_report": {
+                "revenue": received,
+                "costs": spent,
+                "net_cash_flow": received - spent,
+                "total_credit_sold": allocated,
+                "total_cost": cost_basis,
+                "total_selling_value": CustomerCreditAllocation.objects.aggregate(
+                    total=Sum("selling_price_usd")
+                )["total"] or Decimal("0"),
+                "estimated_profit": profit,
+            },
+            "top_customers_allocated": top_allocated,
+            "top_customers_revenue": top_revenue,
+            "top_customers_profit": top_profit,
+            "report_customer_sections": (
+                ("Top Customers by Allocated Credit", top_allocated),
+                ("Top Customers by Revenue", top_revenue),
+                ("Top Customers by Profit", top_profit),
+            ),
             "recent_transactions": Transaction.objects.select_related(
                 "customer", "expense_category"
             ).order_by("-created_at")[:5],

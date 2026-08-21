@@ -8,6 +8,7 @@ from unfold.admin import TabularInline
 
 from apps.core.admin import BaseModelAdmin
 from apps.credits.models import CustomerCreditAllocation
+from apps.customer_credentials.models import CustomerCredential
 from apps.customers.models import Customer
 from apps.transactions.models import Transaction
 
@@ -36,6 +37,25 @@ class CustomerTransactionInline(TabularInline):
         return False
 
 
+class CustomerCredentialInline(TabularInline):
+    model = CustomerCredential
+    extra = 0
+    can_delete = False
+    fields = (
+        "provider",
+        "endpoint",
+        "credit_allocation",
+        "assigned_credit_usd",
+        "status",
+        "expire_date",
+    )
+    readonly_fields = fields
+    show_change_link = True
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
 @admin.register(Customer)
 class CustomerAdmin(BaseModelAdmin):
     """Unfold administration for customer records."""
@@ -47,6 +67,7 @@ class CustomerAdmin(BaseModelAdmin):
         "total_allocated_credit_display",
         "remaining_credit_display",
         "total_payments_received_display",
+        "active_credentials_display",
         "next_credit_expiration_display",
         "active_allocations_display",
         "created_at",
@@ -57,6 +78,7 @@ class CustomerAdmin(BaseModelAdmin):
     readonly_fields = (
         "credit_summary",
         "financial_summary",
+        "credential_summary",
         "created_at",
         "updated_at",
     )
@@ -77,10 +99,18 @@ class CustomerAdmin(BaseModelAdmin):
             "Financial Summary",
             {"fields": ("financial_summary",)},
         ),
+        (
+            "Credential Summary",
+            {"fields": ("credential_summary",)},
+        ),
         ("Internal Notes", {"fields": ("notes",)}),
         ("Timestamps", {"fields": ("created_at", "updated_at")}),
     )
-    inlines = (CustomerAllocationInline, CustomerTransactionInline)
+    inlines = (
+        CustomerAllocationInline,
+        CustomerTransactionInline,
+        CustomerCredentialInline,
+    )
 
     def get_queryset(self, request: HttpRequest):
         decimal_output = DecimalField(max_digits=20, decimal_places=8)
@@ -89,6 +119,10 @@ class CustomerAdmin(BaseModelAdmin):
         ).values("customer")
         transaction_totals = Transaction.objects.filter(
             customer=OuterRef("pk")
+        ).values("customer")
+        credential_totals = CustomerCredential.objects.filter(
+            customer=OuterRef("pk"),
+            status=CustomerCredential.Status.ACTIVE,
         ).values("customer")
         return super().get_queryset(request).annotate(
             admin_total_allocated=Coalesce(
@@ -136,6 +170,17 @@ class CustomerAdmin(BaseModelAdmin):
                 ),
                 distinct=True,
             ),
+            admin_active_credentials=Coalesce(
+                Subquery(
+                    credential_totals.annotate(total=Count("id")).values("total")[:1]
+                ),
+                Value(0),
+            ),
+            admin_next_credential_expiration=Subquery(
+                credential_totals.filter(expire_date__isnull=False)
+                .order_by("expire_date")
+                .values("expire_date")[:1]
+            ),
         )
 
     @admin.display(description="Total Allocated Credit (USD)", ordering="admin_total_allocated")
@@ -149,6 +194,10 @@ class CustomerAdmin(BaseModelAdmin):
     @admin.display(description="Payments Received", ordering="admin_payments_received")
     def total_payments_received_display(self, obj: Customer):
         return obj.admin_payments_received
+
+    @admin.display(description="Active Credentials", ordering="admin_active_credentials")
+    def active_credentials_display(self, obj: Customer):
+        return obj.admin_active_credentials
 
     @admin.display(description="Next Credit Expiration", ordering="admin_next_expiration")
     def next_credit_expiration_display(self, obj: Customer):
@@ -211,4 +260,35 @@ class CustomerAdmin(BaseModelAdmin):
             f'Payments received: {summary["payments"]:.2f} | '
             f'Refunds: {summary["refunds"]:.2f} | '
             f'Net paid: {summary["payments"] - summary["refunds"]:.2f}'
+        )
+
+    @admin.display(description="Credential Summary")
+    def credential_summary(self, obj: Customer | None):
+        if not obj:
+            return "Available after the customer is saved."
+        summary = obj.credentials.aggregate(
+            active_count=Count(
+                "id", filter=Q(status=CustomerCredential.Status.ACTIVE)
+            ),
+            active_credit=Coalesce(
+                Sum(
+                    "assigned_credit_usd",
+                    filter=Q(status=CustomerCredential.Status.ACTIVE),
+                ),
+                Value(0),
+                output_field=DecimalField(max_digits=20, decimal_places=2),
+            ),
+            next_expiration=Min(
+                "expire_date",
+                filter=Q(
+                    status=CustomerCredential.Status.ACTIVE,
+                    expire_date__isnull=False,
+                ),
+            ),
+        )
+        next_expiration = summary["next_expiration"] or "-"
+        return (
+            f'Active credentials: {summary["active_count"]} | '
+            f'Assigned credit: {summary["active_credit"]:.2f} USD | '
+            f'Next expiration: {next_expiration}'
         )

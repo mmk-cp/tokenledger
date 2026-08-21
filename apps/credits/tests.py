@@ -1,7 +1,7 @@
 """Tests for credit purchase currency relations and snapshots."""
 
 from decimal import Decimal
-from datetime import date
+from datetime import date, timedelta
 
 from django.contrib import admin
 from django.db.models.deletion import ProtectedError
@@ -9,7 +9,7 @@ from django.core.exceptions import ValidationError
 from django.test import RequestFactory, TestCase
 
 from apps.core.models import User
-from apps.credits.admin import CreditPurchaseAdmin
+from apps.credits.admin import CreditPurchaseAdmin, PurchaseExpirationFilter
 from apps.credits.models import CreditBalance, CreditPurchase, CustomerCreditAllocation
 from apps.currencies.models import Currency
 from apps.customers.models import Customer
@@ -84,6 +84,40 @@ class CreditPurchaseCurrencyTests(TestCase):
         queryset = form.base_fields["paid_currency"].queryset
         self.assertTrue(queryset.filter(pk=self.currency.pk).exists())
         self.assertFalse(queryset.filter(pk=inactive.pk).exists())
+
+    def test_purchase_admin_expiration_days_and_filter(self):
+        today = date.today()
+        self.purchase.expire_date = today + timedelta(days=7)
+        self.purchase.save()
+        purchase_admin = CreditPurchaseAdmin(CreditPurchase, admin.site)
+        request = RequestFactory().get("/admin/credits/creditpurchase/")
+        request.user = User.objects.create_superuser(
+            username="expiration-purchase-admin",
+            email="expiration-purchase-admin@example.com",
+            password="test-password",
+        )
+        purchase = purchase_admin.get_queryset(request).get(pk=self.purchase.pk)
+        self.assertEqual(purchase.admin_days_until_expiration, 7)
+
+        filter_instance = PurchaseExpirationFilter(
+            request,
+            {"expiration": "expiring"},
+            CreditPurchase,
+            purchase_admin,
+        )
+        self.assertEqual(filter_instance.queryset(request, CreditPurchase.objects.all()).count(), 1)
+
+    def test_purchase_without_expiration_returns_empty_days(self):
+        purchase_admin = CreditPurchaseAdmin(CreditPurchase, admin.site)
+        request = RequestFactory().get("/admin/credits/creditpurchase/")
+        request.user = User.objects.create_superuser(
+            username="no-expiration-admin",
+            email="no-expiration-admin@example.com",
+            password="test-password",
+        )
+        purchase = purchase_admin.get_queryset(request).get(pk=self.purchase.pk)
+        self.assertIsNone(purchase.admin_days_until_expiration)
+        self.assertEqual(purchase_admin.days_until_expiration_display(purchase), "-")
 
     def test_purchase_without_valuation_snapshot_works(self):
         self.assertIsNone(self.purchase.converted_amount)

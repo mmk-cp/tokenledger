@@ -146,6 +146,13 @@ class DashboardTests(TestCase):
         self.assertEqual(metrics["Money Spent (USD)"], "25.00")
         self.assertEqual(metrics["Net Cash Flow (USD)"], "50.00")
         self.assertEqual(metrics["Estimated Profit (USD)"], "20.00")
+        self.assertEqual(context["financial_report"]["revenue"], Decimal("75.00"))
+        self.assertEqual(context["financial_report"]["costs"], Decimal("25.00"))
+        self.assertEqual(context["financial_report"]["total_selling_value"], Decimal("50.00"))
+        self.assertEqual(context["financial_report"]["estimated_profit"], Decimal("20.00"))
+        self.assertEqual(context["top_customers_allocated"][0]["name"], "Dashboard Customer")
+        self.assertEqual(context["top_customers_allocated"][0]["value"], Decimal("40.00"))
+        self.assertEqual(context["top_customers_profit"][0]["value"], Decimal("20.00"))
         self.assertEqual(len(context["recent_transactions"]), 2)
 
     def test_dashboard_converts_multiple_currencies_and_skips_missing_rates(self):

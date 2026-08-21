@@ -41,6 +41,28 @@ class ExpirationFilter(admin.SimpleListFilter):
         return queryset
 
 
+class PurchaseExpirationFilter(admin.SimpleListFilter):
+    title = "Expiration"
+    parameter_name = "expiration"
+
+    def lookups(self, request, model_admin):
+        return (
+            ("expiring", "Expiring soon (30 days)"),
+            ("expired", "Expired"),
+        )
+
+    def queryset(self, request, queryset):
+        today = timezone.localdate()
+        if self.value() == "expiring":
+            return queryset.filter(
+                expire_date__gte=today,
+                expire_date__lte=today + timedelta(days=30),
+            )
+        if self.value() == "expired":
+            return queryset.filter(expire_date__lt=today)
+        return queryset
+
+
 @admin.register(CreditPurchase)
 class CreditPurchaseAdmin(BaseModelAdmin):
     """Unfold administration for owner credit purchases."""
@@ -55,8 +77,15 @@ class CreditPurchaseAdmin(BaseModelAdmin):
         "status",
         "purchase_date",
         "expire_date",
+        "days_until_expiration_display",
     )
-    list_filter = ("provider", "status", "paid_currency", "purchase_date")
+    list_filter = (
+        "provider",
+        "status",
+        "paid_currency",
+        "purchase_date",
+        PurchaseExpirationFilter,
+    )
     search_fields = (
         "name",
         "provider__name",
@@ -113,6 +142,25 @@ class CreditPurchaseAdmin(BaseModelAdmin):
                 is_active=True
             ).order_by("code")
         return form
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).annotate(
+            admin_days_until_expiration=Func(
+                F("expire_date"),
+                Value(timezone.localdate()),
+                function="DATEDIFF",
+                output_field=IntegerField(),
+            )
+        )
+
+    @admin.display(
+        description="Days Until Expiration",
+        ordering="admin_days_until_expiration",
+    )
+    def days_until_expiration_display(self, obj: CreditPurchase):
+        if obj.expire_date is None:
+            return "-"
+        return obj.admin_days_until_expiration
 
 
 @admin.register(CreditBalance)
