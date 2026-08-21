@@ -1,0 +1,2 @@
+"""Wallet management application."""
+

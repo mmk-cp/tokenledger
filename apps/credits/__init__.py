@@ -1,0 +1,2 @@
+"""Credit management application."""
+

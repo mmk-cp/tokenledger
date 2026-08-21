@@ -1,0 +1,2 @@
+"""Shared project infrastructure."""
+

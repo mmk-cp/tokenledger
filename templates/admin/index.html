@@ -1,0 +1,38 @@
+{% extends "admin/base.html" %}
+
+{% load i18n unfold %}
+
+{% block title %}{{ title }} | {{ site_title }}{% endblock %}
+
+{% block branding %}
+    {% include "unfold/helpers/site_branding.html" %}
+{% endblock %}
+
+{% block content %}
+    <div class="flex flex-col gap-8">
+        <section class="bg-white border border-base-200 flex flex-col gap-6 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
+            <div>
+                <h2 class="font-semibold text-base-900 text-lg dark:text-white">{{ dashboard_title }}</h2>
+                <p class="mt-2 text-base-500 dark:text-base-400">{{ dashboard_description }}</p>
+            </div>
+
+            <div class="gap-3 grid md:grid-cols-2 xl:grid-cols-3">
+                {% for module in dashboard_modules %}
+                    <div class="bg-base-50 border border-base-200 px-4 py-3 rounded-default dark:bg-base-800 dark:border-base-700">
+                        <span class="font-medium text-base-700 dark:text-base-200">{{ module }}</span>
+                        <p class="mt-1 text-base-400 text-xs dark:text-base-500">Ready for future implementation</p>
+                    </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <div class="flex flex-col lg:flex-row lg:gap-8">
+            <div class="grow">
+                {% include "unfold/helpers/app_list_default.html" %}
+            </div>
+
+            {% include "unfold/helpers/history.html" %}
+        </div>
+    </div>
+{% endblock %}
+

@@ -1,0 +1,2 @@
+"""Customer management application."""
+
