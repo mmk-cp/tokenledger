@@ -2,7 +2,7 @@
 
 TokenLedger is an open-source AI API credit cost management system for resellers. It is intended to manage providers, API endpoints, wallets, purchases, customer allocations, transactions, and profit/loss reporting as the project evolves.
 
-This repository currently contains the project foundation only. Business models, APIs, and domain features have not been implemented.
+The current foundation includes core identity and audit infrastructure, provider/API endpoint inventory, and operator wallet inventory. Financial workflows and customer-facing features remain intentionally out of scope until their respective implementation steps.
 
 ## Technology
 
