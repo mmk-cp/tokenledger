@@ -10,19 +10,33 @@
 
 {% block content %}
     <div class="flex flex-col gap-8">
-        <section class="bg-white border border-base-200 flex flex-col gap-6 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
-            <div>
-                <h2 class="font-semibold text-base-900 text-lg dark:text-white">{{ dashboard_title }}</h2>
-                <p class="mt-2 text-base-500 dark:text-base-400">{{ dashboard_description }}</p>
-            </div>
+        <section class="gap-3 grid md:grid-cols-2 xl:grid-cols-3">
+            {% for metric in dashboard_metrics %}
+                <div class="bg-white border border-base-200 p-5 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
+                    <p class="text-base-500 text-sm dark:text-base-400">{{ metric.label }}</p>
+                    <p class="font-semibold mt-2 text-2xl text-base-900 dark:text-white">{{ metric.value }}</p>
+                </div>
+            {% endfor %}
+        </section>
 
-            <div class="gap-3 grid md:grid-cols-2 xl:grid-cols-3">
-                {% for module in dashboard_modules %}
-                    <div class="bg-base-50 border border-base-200 px-4 py-3 rounded-default dark:bg-base-800 dark:border-base-700">
-                        <span class="font-medium text-base-700 dark:text-base-200">{{ module }}</span>
-                        <p class="mt-1 text-base-400 text-xs dark:text-base-500">Ready for future implementation</p>
-                    </div>
-                {% endfor %}
+        <section class="gap-8 grid lg:grid-cols-3">
+            <div class="bg-white border border-base-200 p-5 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
+                <h2 class="font-semibold text-base-900 text-lg dark:text-white">Recent Transactions</h2>
+                <div class="mt-4 space-y-3 text-sm">
+                    {% for item in recent_transactions %}<div class="flex justify-between gap-3"><span>{{ item.get_transaction_type_display }}</span><span>{{ item.amount }} {{ item.currency }}</span></div>{% empty %}<p class="text-base-500">No transactions yet.</p>{% endfor %}
+                </div>
+            </div>
+            <div class="bg-white border border-base-200 p-5 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
+                <h2 class="font-semibold text-base-900 text-lg dark:text-white">Recent Allocations</h2>
+                <div class="mt-4 space-y-3 text-sm">
+                    {% for item in recent_allocations %}<div class="flex justify-between gap-3"><span>{{ item.customer }}</span><span>{{ item.allocated_credit_usd }} USD</span></div>{% empty %}<p class="text-base-500">No allocations yet.</p>{% endfor %}
+                </div>
+            </div>
+            <div class="bg-white border border-base-200 p-5 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
+                <h2 class="font-semibold text-base-900 text-lg dark:text-white">Recent Audit Activity</h2>
+                <div class="mt-4 space-y-3 text-sm">
+                    {% for item in recent_audit_logs %}<div class="flex justify-between gap-3"><span>{{ item.action }} {{ item.model_name }}</span><span>{{ item.created_at|date:"Y-m-d H:i" }}</span></div>{% empty %}<p class="text-base-500">No audit activity yet.</p>{% endfor %}
+                </div>
             </div>
         </section>
 
@@ -35,4 +49,3 @@
         </div>
     </div>
 {% endblock %}
-

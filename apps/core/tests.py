@@ -3,10 +3,13 @@
 from datetime import date
 from decimal import Decimal
 
-from django.test import TestCase
+from django.test import RequestFactory, TestCase
 
-from apps.core.models import AuditLog
+from apps.core.admin import dashboard_callback
+from apps.core.models import AuditLog, User
+from apps.credits.models import CreditBalance, CreditPurchase, CustomerCreditAllocation
 from apps.customers.models import Customer
+from apps.providers.models import Provider
 from apps.transactions.models import Transaction
 from apps.wallets.models import Wallet
 
@@ -66,3 +69,71 @@ class AuditSignalTests(TestCase):
         )
 
         self.assertEqual(AuditLog.objects.count(), initial_count + 1)
+
+
+class DashboardTests(TestCase):
+    def test_dashboard_calculations_for_staff_user(self):
+        user = User.objects.create_user(
+            username="admin",
+            email="admin@example.com",
+            password="test-password",
+            is_staff=True,
+        )
+        provider = Provider.objects.create(name="Provider", slug="provider")
+        wallet = Wallet.objects.create(
+            name="Dashboard Wallet",
+            currency="USD",
+            network="Internal",
+            address="dashboard-test-wallet-address",
+        )
+        purchase = CreditPurchase.objects.create(
+            provider=provider,
+            wallet=wallet,
+            name="Active Purchase",
+            credit_amount_usd=Decimal("100.00"),
+            paid_amount=Decimal("100.00"),
+            paid_currency="USD",
+            exchange_rate=Decimal("1.00"),
+        )
+        CreditBalance.objects.create(
+            purchase=purchase,
+            used_credit_usd=Decimal("0.00"),
+        )
+        customer = Customer.objects.create(name="Dashboard Customer")
+        CustomerCreditAllocation.objects.create(
+            customer=customer,
+            credit_purchase=purchase,
+            allocated_credit_usd=Decimal("40.00"),
+            cost_price_usd=Decimal("30.00"),
+            selling_price_usd=Decimal("50.00"),
+        )
+        Transaction.objects.create(
+            transaction_type=Transaction.TransactionType.CUSTOMER_PAYMENT,
+            direction=Transaction.Direction.IN,
+            amount=Decimal("75.00"),
+            currency="USD",
+            transaction_date=date.today(),
+        )
+        Transaction.objects.create(
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            direction=Transaction.Direction.OUT,
+            amount=Decimal("25.00"),
+            currency="USD",
+            transaction_date=date.today(),
+        )
+        request = RequestFactory().get("/admin/")
+        request.user = user
+
+        context = dashboard_callback(request, {})
+        metrics = {
+            item["label"]: item["value"] for item in context["dashboard_metrics"]
+        }
+
+        self.assertEqual(metrics["Purchased Credit (USD)"], "100.00")
+        self.assertEqual(metrics["Allocated Credit (USD)"], "40.00")
+        self.assertEqual(metrics["Remaining Available Credit (USD)"], "60.00")
+        self.assertEqual(metrics["Money Received"], "75.00")
+        self.assertEqual(metrics["Money Spent"], "25.00")
+        self.assertEqual(metrics["Net Cash Flow"], "50.00")
+        self.assertEqual(metrics["Estimated Profit (USD)"], "20.00")
+        self.assertEqual(len(context["recent_transactions"]), 2)
