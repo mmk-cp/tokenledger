@@ -14,6 +14,8 @@ from apps.customers.models import Customer
 from apps.customers.admin import CustomerAdmin
 from apps.credits.admin import CustomerCreditAllocationAdmin
 from apps.providers.models import Provider
+from apps.providers.models import APIEndpoint
+from apps.customer_credentials.models import CustomerCredential
 from apps.transactions.models import Transaction
 from apps.wallets.models import Wallet
 
@@ -73,6 +75,25 @@ class AuditSignalTests(TestCase):
         )
 
         self.assertEqual(AuditLog.objects.count(), initial_count + 1)
+
+    def test_wallet_update_captures_field_changes(self):
+        wallet = Wallet.objects.create(name="Before", currency=Currency.objects.get(code="USDT"), network="TRC20", address="audit-change-wallet")
+        wallet.name = "After"
+        wallet.save()
+        log = AuditLog.objects.filter(model_name="Wallet", action="UPDATE").latest("created_at")
+        self.assertEqual(log.changed_fields["name"], {"old": "Before", "new": "After"})
+
+    def test_credential_key_change_is_redacted(self):
+        provider = Provider.objects.create(name="Secure Provider", slug="secure-provider")
+        endpoint = APIEndpoint.objects.create(provider=provider, name="Secure", base_url="https://secure.example.com", api_key="endpoint-secret")
+        customer = Customer.objects.create(name="Secure Customer")
+        credential = CustomerCredential.objects.create(customer=customer, provider=provider, endpoint=endpoint, encrypted_api_key="old-secret", start_date=date.today())
+        credential.encrypted_api_key = "new-secret"
+        credential.save()
+        log = AuditLog.objects.filter(model_name="CustomerCredential", action="UPDATE").latest("created_at")
+        self.assertEqual(log.changed_fields["encrypted_api_key"], {"old": "changed", "new": "changed"})
+        self.assertNotIn("old-secret", str(log.changed_fields))
+        self.assertNotIn("new-secret", str(log.changed_fields))
 
 
 class DashboardTests(TestCase):

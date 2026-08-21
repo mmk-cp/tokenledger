@@ -22,6 +22,24 @@ class CustomerCredentialAdmin(BaseModelAdmin):
         ("Timestamps", {"fields": ("created_at", "updated_at")} ),
     )
 
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        if not request.user.has_perm("customer_credentials.view_sensitive_api_key"):
+            form.base_fields.pop("encrypted_api_key", None)
+        return form
+
+    def get_fieldsets(self, request, obj=None):
+        fieldsets = super().get_fieldsets(request, obj)
+        if request.user.has_perm("customer_credentials.view_sensitive_api_key"):
+            return fieldsets
+        return tuple(
+            (title, {**options, "fields": tuple(
+                field for field in options.get("fields", ())
+                if field != "encrypted_api_key"
+            )})
+            for title, options in fieldsets
+        )
+
     @admin.display(description="API key")
     def masked_api_key_display(self, obj):
         return obj.masked_api_key

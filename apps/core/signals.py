@@ -1,6 +1,6 @@
 """Automatic audit logging for important TokenLedger models."""
 
-from django.db.models.signals import post_delete, post_save
+from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 
 from apps.core.audit_context import get_audit_user
@@ -26,9 +26,42 @@ TRACKED_MODELS = (
     Currency,
     CustomerCredential,
 )
+DETAILED_MODELS = (
+    CustomerCredential,
+    CreditPurchase,
+    CustomerCreditAllocation,
+    Transaction,
+    Wallet,
+)
+_ORIGINAL_VALUES = {}
 
 
-def _create_audit_log(instance: object, action: str) -> None:
+def _serialize(value):
+    if value is None:
+        return None
+    return str(value)
+
+
+def _field_values(instance):
+    return {
+        field.name: getattr(instance, field.attname)
+        for field in instance._meta.concrete_fields
+        if field.name not in {"id", "created_at", "updated_at"}
+    }
+
+
+@receiver(pre_save, dispatch_uid="audit_capture_detailed_original")
+def capture_detailed_original(sender, instance, **kwargs):
+    if sender not in DETAILED_MODELS or not instance.pk:
+        return
+    try:
+        original = sender.objects.get(pk=instance.pk)
+    except sender.DoesNotExist:
+        return
+    _ORIGINAL_VALUES[id(instance)] = _field_values(original)
+
+
+def _create_audit_log(instance: object, action: str, changed_fields=None) -> None:
     """Create a concise audit event without storing field-level snapshots."""
     model_name = instance._meta.object_name
     action_label = {"CREATE": "Created", "UPDATE": "Updated", "DELETE": "Deleted"}[
@@ -40,6 +73,7 @@ def _create_audit_log(instance: object, action: str) -> None:
         model_name=model_name,
         object_id=str(instance.pk),
         description=f'{action_label} {instance._meta.verbose_name.lower()} "{instance}"',
+        changed_fields=changed_fields or {},
     )
 
 
@@ -60,7 +94,17 @@ def _create_audit_log(instance: object, action: str) -> None:
 @receiver(post_save, sender=CustomerCredential, dispatch_uid="audit_customer_credential_save")
 def audit_model_save(sender, instance, created: bool, **kwargs) -> None:
     """Record CREATE and UPDATE events for tracked models."""
-    _create_audit_log(instance, "CREATE" if created else "UPDATE")
+    changed = {}
+    if not created and sender in DETAILED_MODELS:
+        original = _ORIGINAL_VALUES.pop(id(instance), {})
+        current = _field_values(instance)
+        sensitive = {"encrypted_api_key", "api_key"}
+        for name, old_value in original.items():
+            if old_value != current.get(name):
+                changed[name] = {"old": "changed", "new": "changed"} if name in sensitive else {
+                    "old": _serialize(old_value), "new": _serialize(current.get(name))
+                }
+    _create_audit_log(instance, "CREATE" if created else "UPDATE", changed)
 
 
 @receiver(post_delete, sender=Provider, dispatch_uid="audit_provider_delete")

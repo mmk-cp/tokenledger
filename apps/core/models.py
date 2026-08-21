@@ -40,6 +40,7 @@ class AuditLog(TimeStampedModel):
     object_id = models.CharField(max_length=255, db_index=True)
     description = models.TextField(blank=True)
     ip_address = models.GenericIPAddressField(null=True, blank=True)
+    changed_fields = models.JSONField(default=dict, blank=True)
 
     class Meta:
         verbose_name = "Audit Log"

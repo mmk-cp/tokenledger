@@ -40,6 +40,7 @@ class CustomerCredential(TimeStampedModel):
         verbose_name = "Customer Credential"
         verbose_name_plural = "Customer Credentials"
         indexes = [models.Index(fields=("provider", "status")), models.Index(fields=("expire_date", "status"))]
+        permissions = (("view_sensitive_api_key", "Can view decrypted API keys"),)
 
     def clean(self):
         super().clean()

@@ -116,7 +116,9 @@ class AuditLogAdmin(BaseModelAdmin):
         "model_name",
         "object_id",
         "user",
+        "changed_fields",
         "ip_address",
+        "changed_fields",
     )
     list_filter = ("action", "model_name", "created_at")
     search_fields = (
@@ -140,7 +142,7 @@ class AuditLogAdmin(BaseModelAdmin):
     fieldsets = (
         (
             "Event",
-            {"fields": ("action", "description", "created_at", "updated_at")},
+            {"fields": ("action", "description", "changed_fields", "created_at", "updated_at")},
         ),
         (
             "Context",
