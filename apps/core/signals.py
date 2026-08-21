@@ -108,6 +108,23 @@ def audit_model_save(sender, instance, created: bool, **kwargs) -> None:
     _create_audit_log(instance, "CREATE" if created else "UPDATE", changed)
 
 
+@receiver(post_save, sender=CreditPurchase, dispatch_uid="create_purchase_transaction")
+def create_purchase_transaction(sender, instance, created: bool, **kwargs) -> None:
+    """Record the cash outflow represented by a newly created purchase."""
+    if not created:
+        return
+    Transaction.objects.create(
+        transaction_type=Transaction.TransactionType.PURCHASE,
+        direction=Transaction.Direction.OUT,
+        wallet=instance.wallet,
+        amount=instance.paid_amount,
+        currency=instance.paid_currency,
+        transaction_date=instance.purchase_date,
+        reference=f"Credit purchase {instance.pk}: {instance.name}",
+        credit_purchase=instance,
+    )
+
+
 @receiver(post_delete, sender=Provider, dispatch_uid="audit_provider_delete")
 @receiver(post_delete, sender=APIEndpoint, dispatch_uid="audit_api_endpoint_delete")
 @receiver(post_delete, sender=Wallet, dispatch_uid="audit_wallet_delete")

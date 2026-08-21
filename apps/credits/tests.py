@@ -15,6 +15,7 @@ from apps.currencies.models import Currency
 from apps.customers.models import Customer
 from apps.providers.models import Provider
 from apps.wallets.models import Wallet
+from apps.transactions.models import Transaction
 
 
 class CreditPurchaseCurrencyTests(TestCase):
@@ -40,6 +41,35 @@ class CreditPurchaseCurrencyTests(TestCase):
     def test_paid_currency_is_a_relation(self):
         self.purchase.refresh_from_db()
         self.assertEqual(self.purchase.paid_currency.code, "USDT")
+
+    def test_purchase_creates_one_purchase_transaction(self):
+        transaction = Transaction.objects.get(credit_purchase=self.purchase)
+        self.assertEqual(transaction.transaction_type, Transaction.TransactionType.PURCHASE)
+        self.assertEqual(transaction.direction, Transaction.Direction.OUT)
+        self.assertEqual(transaction.wallet_id, self.purchase.wallet_id)
+        self.assertEqual(transaction.amount, self.purchase.paid_amount)
+        self.assertEqual(transaction.currency_id, self.purchase.paid_currency_id)
+
+    def test_editing_purchase_does_not_duplicate_transaction(self):
+        self.purchase.name = "Edited purchase"
+        self.purchase.save()
+        self.assertEqual(Transaction.objects.filter(credit_purchase=self.purchase).count(), 1)
+
+    def test_allocation_does_not_create_customer_payment(self):
+        CreditBalance.objects.create(purchase=self.purchase)
+        customer = Customer.objects.create(name="No Payment Customer")
+        CustomerCreditAllocation.objects.create(
+            customer=customer,
+            credit_purchase=self.purchase,
+            allocated_credit_usd=Decimal("10.00"),
+            selling_price_usd=Decimal("12.00"),
+        )
+        self.assertFalse(
+            Transaction.objects.filter(
+                customer=customer,
+                transaction_type=Transaction.TransactionType.CUSTOMER_PAYMENT,
+            ).exists()
+        )
 
     def test_currency_delete_is_protected(self):
         with self.assertRaises(ProtectedError):
