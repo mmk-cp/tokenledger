@@ -145,6 +145,13 @@ class AuditLogAdmin(BaseModelAdmin):
     ) -> bool:
         return False
 
+    def has_delete_permission(
+        self,
+        request: HttpRequest,
+        obj: AuditLog | None = None,
+    ) -> bool:
+        return False
+
 
 def dashboard_callback(request: HttpRequest, context: dict) -> dict:
     """Add foundation-stage content to the Unfold dashboard context."""

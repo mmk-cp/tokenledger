@@ -6,3 +6,6 @@ class CoreConfig(AppConfig):
     name = "apps.core"
     verbose_name = "Core"
 
+    def ready(self) -> None:
+        """Register audit signal handlers once Django's app registry is ready."""
+        from apps.core import signals  # noqa: F401
