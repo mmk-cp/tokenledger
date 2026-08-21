@@ -5,6 +5,7 @@ from datetime import timedelta
 from django.contrib import admin
 from django.db.models import F, Func, IntegerField, Value
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 
 from apps.core.admin import BaseModelAdmin
 from apps.currencies.models import Currency
@@ -16,14 +17,14 @@ from apps.credits.models import (
 
 
 class ExpirationFilter(admin.SimpleListFilter):
-    title = "Expiration"
+    title = _("Expiration")
     parameter_name = "expiration"
 
     def lookups(self, request, model_admin):
         return (
-            ("active", "Active"),
-            ("expiring", "Expiring soon (30 days)"),
-            ("expired", "Expired"),
+            ("active", _("Active")),
+            ("expiring", _("Expiring soon (30 days)")),
+            ("expired", _("Expired")),
         )
 
     def queryset(self, request, queryset):
@@ -42,13 +43,13 @@ class ExpirationFilter(admin.SimpleListFilter):
 
 
 class PurchaseExpirationFilter(admin.SimpleListFilter):
-    title = "Expiration"
+    title = _("Expiration")
     parameter_name = "expiration"
 
     def lookups(self, request, model_admin):
         return (
-            ("expiring", "Expiring soon (30 days)"),
-            ("expired", "Expired"),
+            ("expiring", _("Expiring soon (30 days)")),
+            ("expired", _("Expired")),
         )
 
     def queryset(self, request, queryset):
@@ -97,7 +98,7 @@ class CreditPurchaseAdmin(BaseModelAdmin):
     readonly_fields = ("created_at", "updated_at")
     fieldsets = (
         (
-            "Purchase",
+            _("Purchase"),
             {
                 "fields": (
                     "name",
@@ -109,7 +110,7 @@ class CreditPurchaseAdmin(BaseModelAdmin):
             },
         ),
         (
-            "Amounts",
+            _("Amounts"),
             {
                 "fields": (
                     "credit_amount_usd",
@@ -120,7 +121,7 @@ class CreditPurchaseAdmin(BaseModelAdmin):
             },
         ),
         (
-            "Valuation Snapshot",
+            _("Valuation Snapshot"),
             {
                 "fields": (
                     "converted_amount",
@@ -130,9 +131,9 @@ class CreditPurchaseAdmin(BaseModelAdmin):
                 )
             },
         ),
-        ("Dates", {"fields": ("purchase_date", "expire_date")}),
-        ("Notes", {"fields": ("notes",)}),
-        ("Timestamps", {"fields": ("created_at", "updated_at")}),
+        (_("Dates"), {"fields": ("purchase_date", "expire_date")}),
+        (_("Notes"), {"fields": ("notes",)}),
+        (_("Timestamps"), {"fields": ("created_at", "updated_at")}),
     )
 
     def get_form(self, request, obj=None, **kwargs):
@@ -154,7 +155,7 @@ class CreditPurchaseAdmin(BaseModelAdmin):
         )
 
     @admin.display(
-        description="Days Until Expiration",
+        description=_("Days Until Expiration"),
         ordering="admin_days_until_expiration",
     )
     def days_until_expiration_display(self, obj: CreditPurchase):
@@ -184,9 +185,9 @@ class CreditBalanceAdmin(BaseModelAdmin):
         "updated_at",
     )
     fieldsets = (
-        ("Purchase", {"fields": ("purchase",)}),
+        (_("Purchase"), {"fields": ("purchase",)}),
         (
-            "Inventory",
+            _("Inventory"),
             {
                 "fields": (
                     "total_credit_usd",
@@ -195,7 +196,7 @@ class CreditBalanceAdmin(BaseModelAdmin):
                 )
             },
         ),
-        ("Timestamps", {"fields": ("created_at", "updated_at")}),
+        (_("Timestamps"), {"fields": ("created_at", "updated_at")}),
     )
 
 
@@ -229,15 +230,15 @@ class CustomerCreditAllocationAdmin(BaseModelAdmin):
     )
     fieldsets = (
         (
-            "Customer Information",
+            _("Customer Information"),
             {"fields": ("customer", "status")},
         ),
         (
-            "Credit Source",
+            _("Credit Source"),
             {"fields": ("credit_purchase", "provider")},
         ),
         (
-            "Financial Information",
+            _("Financial Information"),
             {
                 "fields": (
                     "allocated_credit_usd",
@@ -248,12 +249,12 @@ class CustomerCreditAllocationAdmin(BaseModelAdmin):
                 )
             },
         ),
-        ("Validity", {"fields": ("start_date", "expire_date")}),
-        ("Notes", {"fields": ("notes",)}),
-        ("Timestamps", {"fields": ("created_at", "updated_at")}),
+        (_("Validity"), {"fields": ("start_date", "expire_date")}),
+        (_("Notes"), {"fields": ("notes",)}),
+        (_("Timestamps"), {"fields": ("created_at", "updated_at")}),
     )
 
-    @admin.display(description="Profit (USD)")
+    @admin.display(description=_("Profit (USD)"))
     def profit_usd_display(self, obj: CustomerCreditAllocation):
         # The add form evaluates read-only display methods before required
         # amount fields have been entered. Keep that form state renderable.
@@ -271,7 +272,7 @@ class CustomerCreditAllocationAdmin(BaseModelAdmin):
             )
         )
 
-    @admin.display(description="Days Until Expiration", ordering="admin_days_until_expiration")
+    @admin.display(description=_("Days Until Expiration"), ordering="admin_days_until_expiration")
     def days_until_expiration_display(self, obj: CustomerCreditAllocation):
         if obj.expire_date is None:
             return "-"

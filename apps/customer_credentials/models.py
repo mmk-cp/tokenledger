@@ -3,6 +3,7 @@ from decimal import Decimal
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 
 from apps.core.models import TimeStampedModel
 from apps.credits.models import CustomerCreditAllocation
@@ -12,9 +13,9 @@ from apps.providers.models import APIEndpoint, Provider
 
 class CustomerCredential(TimeStampedModel):
     class Status(models.TextChoices):
-        ACTIVE = "ACTIVE", "Active"
-        EXPIRED = "EXPIRED", "Expired"
-        CANCELLED = "CANCELLED", "Cancelled"
+        ACTIVE = "ACTIVE", _("Active")
+        EXPIRED = "EXPIRED", _("Expired")
+        CANCELLED = "CANCELLED", _("Cancelled")
 
     customer = models.ForeignKey(Customer, on_delete=models.PROTECT, related_name="credentials")
     provider = models.ForeignKey(Provider, on_delete=models.PROTECT, related_name="customer_credentials")
@@ -37,8 +38,8 @@ class CustomerCredential(TimeStampedModel):
 
     class Meta:
         ordering = ("-created_at",)
-        verbose_name = "Customer Credential"
-        verbose_name_plural = "Customer Credentials"
+        verbose_name = _("Customer Credential")
+        verbose_name_plural = _("Customer Credentials")
         indexes = [models.Index(fields=("provider", "status")), models.Index(fields=("expire_date", "status"))]
         permissions = (("view_sensitive_api_key", "Can view sensitive API keys"),)
 

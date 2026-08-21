@@ -3,6 +3,7 @@
 from django.contrib import admin
 from django.db.models import Count, DecimalField, Min, OuterRef, Q, Subquery, Sum, Value
 from django.db.models.functions import Coalesce
+from django.utils.translation import gettext_lazy as _
 from django.http import HttpRequest
 from unfold.admin import TabularInline
 
@@ -84,27 +85,27 @@ class CustomerAdmin(BaseModelAdmin):
     )
     fieldsets = (
         (
-            "Customer",
+            _("Customer"),
             {"fields": ("name", "company_name", "status")},
         ),
         (
-            "Contact Information",
+            _("Contact Information"),
             {"fields": ("email", "phone", "telegram")},
         ),
         (
-            "Credit Summary",
+            _("Credit Summary"),
             {"fields": ("credit_summary",)},
         ),
         (
-            "Financial Summary",
+            _("Financial Summary"),
             {"fields": ("financial_summary",)},
         ),
         (
-            "Credential Summary",
+            _("Credential Summary"),
             {"fields": ("credential_summary",)},
         ),
-        ("Internal Notes", {"fields": ("notes",)}),
-        ("Timestamps", {"fields": ("created_at", "updated_at")}),
+        (_("Internal Notes"), {"fields": ("notes",)}),
+        (_("Timestamps"), {"fields": ("created_at", "updated_at")}),
     )
     inlines = (
         CustomerAllocationInline,
@@ -183,34 +184,34 @@ class CustomerAdmin(BaseModelAdmin):
             ),
         )
 
-    @admin.display(description="Total Allocated Credit (USD)", ordering="admin_total_allocated")
+    @admin.display(description=_("Total Allocated Credit (USD)"), ordering="admin_total_allocated")
     def total_allocated_credit_display(self, obj: Customer):
         return obj.admin_total_allocated
 
-    @admin.display(description="Remaining Credit (USD)", ordering="admin_remaining_credit")
+    @admin.display(description=_("Remaining Credit (USD)"), ordering="admin_remaining_credit")
     def remaining_credit_display(self, obj: Customer):
         return obj.admin_remaining_credit
 
-    @admin.display(description="Payments Received", ordering="admin_payments_received")
+    @admin.display(description=_("Payments Received"), ordering="admin_payments_received")
     def total_payments_received_display(self, obj: Customer):
         return obj.admin_payments_received
 
-    @admin.display(description="Active Credentials", ordering="admin_active_credentials")
+    @admin.display(description=_("Active Credentials"), ordering="admin_active_credentials")
     def active_credentials_display(self, obj: Customer):
         return obj.admin_active_credentials
 
-    @admin.display(description="Next Credit Expiration", ordering="admin_next_expiration")
+    @admin.display(description=_("Next Credit Expiration"), ordering="admin_next_expiration")
     def next_credit_expiration_display(self, obj: Customer):
         return obj.admin_next_expiration or "-"
 
-    @admin.display(description="Active Allocations", ordering="admin_active_allocations")
+    @admin.display(description=_("Active Allocations"), ordering="admin_active_allocations")
     def active_allocations_display(self, obj: Customer):
         return obj.admin_active_allocations
 
-    @admin.display(description="Credit Summary")
+    @admin.display(description=_("Credit Summary"))
     def credit_summary(self, obj: Customer | None):
         if not obj:
-            return "Available after the customer is saved."
+            return _("Available after the customer is saved.")
         decimal_output = DecimalField(max_digits=20, decimal_places=8)
         summary = obj.credit_allocations.aggregate(
             total_allocated=Coalesce(
@@ -229,15 +230,14 @@ class CustomerAdmin(BaseModelAdmin):
             ),
         )
         return (
-            f'Total allocated: {summary["total_allocated"]:.2f} USD | '
-            f'Remaining active: {summary["remaining_active"]:.2f} USD | '
-            f'Active allocations: {summary["active_count"]}'
+            _("Total allocated: %(total)s USD | Remaining active: %(remaining)s USD | Active allocations: %(count)s")
+            % {"total": f'{summary["total_allocated"]:.2f}', "remaining": f'{summary["remaining_active"]:.2f}', "count": summary["active_count"]}
         )
 
-    @admin.display(description="Financial Summary")
+    @admin.display(description=_("Financial Summary"))
     def financial_summary(self, obj: Customer | None):
         if not obj:
-            return "Available after the customer is saved."
+            return _("Available after the customer is saved.")
         summary = obj.transactions.aggregate(
             payments=Coalesce(
                 Sum(
@@ -257,15 +257,14 @@ class CustomerAdmin(BaseModelAdmin):
             ),
         )
         return (
-            f'Payments received: {summary["payments"]:.2f} | '
-            f'Refunds: {summary["refunds"]:.2f} | '
-            f'Net paid: {summary["payments"] - summary["refunds"]:.2f}'
+            _("Payments received: %(payments)s | Refunds: %(refunds)s | Net paid: %(net)s")
+            % {"payments": f'{summary["payments"]:.2f}', "refunds": f'{summary["refunds"]:.2f}', "net": f'{summary["payments"] - summary["refunds"]:.2f}'}
         )
 
-    @admin.display(description="Credential Summary")
+    @admin.display(description=_("Credential Summary"))
     def credential_summary(self, obj: Customer | None):
         if not obj:
-            return "Available after the customer is saved."
+            return _("Available after the customer is saved.")
         summary = obj.credentials.aggregate(
             active_count=Count(
                 "id", filter=Q(status=CustomerCredential.Status.ACTIVE)
@@ -288,7 +287,6 @@ class CustomerAdmin(BaseModelAdmin):
         )
         next_expiration = summary["next_expiration"] or "-"
         return (
-            f'Active credentials: {summary["active_count"]} | '
-            f'Assigned credit: {summary["active_credit"]:.2f} USD | '
-            f'Next expiration: {next_expiration}'
+            _("Active credentials: %(count)s | Assigned credit: %(credit)s USD | Next expiration: %(date)s")
+            % {"count": summary["active_count"], "credit": f'{summary["active_credit"]:.2f}', "date": next_expiration}
         )

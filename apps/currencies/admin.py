@@ -1,6 +1,7 @@
 """Unfold administration for manually maintained exchange rates."""
 
 from django.contrib import admin
+from django.utils.translation import gettext_lazy as _
 
 from apps.core.admin import BaseModelAdmin
 from apps.currencies.models import Currency, ExchangeRate
@@ -16,9 +17,9 @@ class CurrencyAdmin(BaseModelAdmin):
     ordering = ("code",)
     readonly_fields = ("created_at", "updated_at")
     fieldsets = (
-        ("Currency", {"fields": ("code", "name", "symbol", "currency_type")}),
-        ("Configuration", {"fields": ("decimal_places", "is_active")}),
-        ("Timestamps", {"fields": ("created_at", "updated_at")}),
+        (_("Currency"), {"fields": ("code", "name", "symbol", "currency_type")}),
+        (_("Configuration"), {"fields": ("decimal_places", "is_active")}),
+        (_("Timestamps"), {"fields": ("created_at", "updated_at")}),
     )
 
 
@@ -51,10 +52,10 @@ class ExchangeRateAdmin(BaseModelAdmin):
     readonly_fields = ("created_at", "updated_at")
     fieldsets = (
         (
-            "Exchange Rate",
+            _("Exchange Rate"),
             {"fields": ("base_currency", "target_currency", "rate")},
         ),
-        ("Validity", {"fields": ("effective_date", "is_active")}),
-        ("Notes", {"fields": ("description",)}),
-        ("Timestamps", {"fields": ("created_at", "updated_at")}),
+        (_("Validity"), {"fields": ("effective_date", "is_active")}),
+        (_("Notes"), {"fields": ("description",)}),
+        (_("Timestamps"), {"fields": ("created_at", "updated_at")}),
     )

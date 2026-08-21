@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.utils.translation import gettext_lazy as _
 from unfold.widgets import UnfoldAdminPasswordWidget
 
 from apps.core.admin import BaseModelAdmin
@@ -15,12 +16,12 @@ class CustomerCredentialAdmin(BaseModelAdmin):
     list_select_related = ("customer", "provider", "endpoint", "credit_allocation")
     readonly_fields = ("masked_api_key_display", "created_at", "updated_at")
     fieldsets = (
-        ("Assignment", {"fields": ("customer", "provider", "endpoint", "credit_allocation", "status")} ),
-        ("Credential", {"fields": ("api_key", "masked_api_key_display")} ),
-        ("Financial Information", {"fields": ("assigned_credit_usd", "cost_price_usd", "selling_price_usd")} ),
-        ("Validity", {"fields": ("start_date", "expire_date")} ),
-        ("Notes", {"fields": ("notes",)}),
-        ("Timestamps", {"fields": ("created_at", "updated_at")} ),
+        (_("Assignment"), {"fields": ("customer", "provider", "endpoint", "credit_allocation", "status")} ),
+        (_("Credential"), {"fields": ("api_key", "masked_api_key_display")} ),
+        (_("Financial Information"), {"fields": ("assigned_credit_usd", "cost_price_usd", "selling_price_usd")} ),
+        (_("Validity"), {"fields": ("start_date", "expire_date")} ),
+        (_("Notes"), {"fields": ("notes",)}),
+        (_("Timestamps"), {"fields": ("created_at", "updated_at")} ),
     )
 
     def get_form(self, request, obj=None, **kwargs):
@@ -43,6 +44,6 @@ class CustomerCredentialAdmin(BaseModelAdmin):
             for title, options in fieldsets
         )
 
-    @admin.display(description="API key")
+    @admin.display(description=_("API key"))
     def masked_api_key_display(self, obj):
         return obj.masked_api_key

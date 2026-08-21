@@ -1,6 +1,7 @@
 """Unfold admin registrations for providers and API endpoints."""
 
 from django.contrib import admin
+from django.utils.translation import gettext_lazy as _
 from unfold.widgets import UnfoldAdminPasswordWidget
 
 from apps.core.admin import BaseModelAdmin
@@ -18,9 +19,9 @@ class ProviderAdmin(BaseModelAdmin):
     ordering = ("name",)
     readonly_fields = ("created_at", "updated_at")
     fieldsets = (
-        ("Provider", {"fields": ("name", "slug", "website", "is_active")}),
-        ("Description", {"fields": ("description",)}),
-        ("Timestamps", {"fields": ("created_at", "updated_at")}),
+        (_("Provider"), {"fields": ("name", "slug", "website", "is_active")}),
+        (_("Description"), {"fields": ("description",)}),
+        (_("Timestamps"), {"fields": ("created_at", "updated_at")}),
     )
 
 
@@ -44,12 +45,12 @@ class APIEndpointAdmin(BaseModelAdmin):
     readonly_fields = ("masked_api_key_display", "created_at", "updated_at")
     fieldsets = (
         (
-            "Connection",
+            _("Connection"),
             {"fields": ("provider", "name", "base_url", "api_key", "is_active")},
         ),
-        ("Description", {"fields": ("description",)}),
-        ("Security", {"fields": ("masked_api_key_display",)}),
-        ("Timestamps", {"fields": ("created_at", "updated_at")}),
+        (_("Description"), {"fields": ("description",)}),
+        (_("Security"), {"fields": ("masked_api_key_display",)}),
+        (_("Timestamps"), {"fields": ("created_at", "updated_at")}),
     )
 
     def get_form(self, request, obj=None, **kwargs):
@@ -68,6 +69,6 @@ class APIEndpointAdmin(BaseModelAdmin):
             return fieldsets
         return tuple((title, {**options, "fields": tuple(field for field in options.get("fields", ()) if field != "api_key")}) for title, options in fieldsets)
 
-    @admin.display(description="API key")
+    @admin.display(description=_("API key"))
     def masked_api_key_display(self, obj: APIEndpoint) -> str:
         return obj.masked_api_key

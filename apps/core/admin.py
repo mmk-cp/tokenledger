@@ -31,6 +31,45 @@ class BaseModelAdmin(ModelAdmin):
     save_on_top = True
     warn_unsaved_form = True
 
+    # Model fields intentionally keep their historical metadata unchanged.
+    # Override generated labels at the admin form layer instead.
+    form_label_translations = {
+        "base_currency": _("Base currency"), "target_currency": _("Target currency"),
+        "rate": _("Rate"), "effective_date": _("Effective date"),
+        "is_active": _("Is active"), "description": _("Description"),
+        "customer": _("Customer"), "provider": _("Provider"), "endpoint": _("Endpoint"),
+        "status": _("Status"), "allocated_credit_usd": _("Allocated credit USD"),
+        "cost_price_usd": _("Cost price USD"), "selling_price_usd": _("Selling price USD"),
+        "selling_price_usd": _("Selling price USD"), "name": _("Name"),
+        "company_name": _("Company name"), "email": _("Email address"),
+        "phone": _("Phone"), "telegram": _("Telegram"), "notes": _("Notes"),
+        "currency": _("Currency"), "network": _("Network"), "address": _("Address"),
+        "amount": _("Amount"), "transaction_type": _("Transaction type"),
+        "direction": _("Direction"), "wallet": _("Wallet"),
+        "credit_purchase": _("Credit purchase"), "allocation": _("Allocation"),
+        "expense_category": _("Expense category"), "exchange_rate": _("Exchange rate"),
+        "converted_amount": _("Converted amount"), "converted_currency": _("Converted currency"),
+        "conversion_rate": _("Conversion rate"), "conversion_date": _("Conversion date"),
+        "reference": _("Reference"), "counterparty": _("Counterparty"),
+        "external_reference": _("External reference"), "transaction_date": _("Transaction date"),
+        "code": _("Code"), "symbol": _("Symbol"), "currency_type": _("Currency type"),
+        "decimal_places": _("Decimal places"), "paid_amount": _("Paid amount"),
+        "paid_currency": _("Paid currency"), "credit_amount_usd": _("Credit amount USD"),
+        "purchase_date": _("Purchase date"), "expire_date": _("Expiration date"),
+        "start_date": _("Start date"), "api_key": _("API key"),
+        "assigned_credit_usd": _("Assigned credit USD"), "total_credit_usd": _("Total credit USD"),
+        "used_credit_usd": _("Used credit USD"), "remaining_credit_usd": _("Remaining credit USD"),
+        "base_url": _("Base URL"), "website": _("Website"), "slug": _("Slug"),
+        "created_at": _("Created at"), "updated_at": _("Updated at"),
+    }
+
+    def get_form(self, request, obj=None, change=False, **kwargs):
+        form = super().get_form(request, obj, change=change, **kwargs)
+        for name, label in self.form_label_translations.items():
+            if name in form.base_fields:
+                form.base_fields[name].label = label
+        return form
+
 
 DASHBOARD_CURRENCY = "USD"
 
@@ -62,11 +101,11 @@ class UserAdmin(BaseUserAdmin, BaseModelAdmin):
     fieldsets = (
         (None, {"fields": ("username", "password")} ),
         (
-            "Personal Information",
+            _("Personal Information"),
             {"fields": ("first_name", "last_name", "email")},
         ),
         (
-            "Permissions",
+            _("Permissions"),
             {
                 "fields": (
                     "is_active",
@@ -78,7 +117,7 @@ class UserAdmin(BaseUserAdmin, BaseModelAdmin):
             },
         ),
         (
-            "Important Dates",
+            _("Important Dates"),
             {"fields": ("last_login", "date_joined", "created_at", "updated_at")},
         ),
     )
@@ -142,11 +181,11 @@ class AuditLogAdmin(BaseModelAdmin):
     )
     fieldsets = (
         (
-            "Event",
+            _("Event"),
             {"fields": ("action", "description", "changed_fields", "created_at", "updated_at")},
         ),
         (
-            "Context",
+            _("Context"),
             {"fields": ("user", "model_name", "object_id", "ip_address")},
         ),
     )
@@ -411,36 +450,36 @@ def dashboard_callback(request: HttpRequest, context: dict) -> dict:
                     "value": f"{Customer.objects.filter(status=Customer.Status.ACTIVE).count():,}",
                 },
                 {
-                    "label": "Total Customer Credit Value (USD)",
+                    "label": _("Total Customer Credit Value (USD)"),
                     "value": f"{customer_credit_value:,.2f}",
                 },
                 {
-                    "label": "Total Available Credit (USD)",
+                    "label": _("Total Available Credit (USD)"),
                     "value": f"{available_credit:,.2f}",
                 },
-                {"label": "Total Cost Basis (USD)", "value": f"{cost_basis:,.2f}"},
+                {"label": _("Total Cost Basis (USD)"), "value": f"{cost_basis:,.2f}"},
                 {
-                    "label": "Total Purchased Cost (USD)",
+                    "label": _("Total Purchased Cost (USD)"),
                     "value": f"{total_purchase_cost:,.2f}",
                 },
                 {
-                    "label": "Total Credit Purchased (USD)",
+                    "label": _("Total Credit Purchased (USD)"),
                     "value": f"{total_credit_purchased:,.2f}",
                 },
                 {
-                    "label": "Average Purchase Cost",
+                    "label": _("Average Purchase Cost"),
                     "value": f"{average_purchase_cost:,.6f}",
                 },
                 {
-                    "label": f"Money Received ({DASHBOARD_CURRENCY})",
+                    "label": _(f"Money Received ({DASHBOARD_CURRENCY})"),
                     "value": f"{received:,.2f}",
                 },
                 {
-                    "label": f"Money Spent ({DASHBOARD_CURRENCY})",
+                    "label": _(f"Money Spent ({DASHBOARD_CURRENCY})"),
                     "value": f"{spent:,.2f}",
                 },
                 {
-                    "label": f"Net Cash Flow ({DASHBOARD_CURRENCY})",
+                    "label": _(f"Net Cash Flow ({DASHBOARD_CURRENCY})"),
                     "value": f"{received - spent:,.2f}",
                 },
                 {"label": _("Estimated Profit (USD)"), "value": f"{profit:,.2f}"},
@@ -460,9 +499,9 @@ def dashboard_callback(request: HttpRequest, context: dict) -> dict:
             "top_customers_revenue": top_revenue,
             "top_customers_profit": top_profit,
             "report_customer_sections": (
-                ("Top Customers by Allocated Credit", top_allocated),
-                ("Top Customers by Revenue", top_revenue),
-                ("Top Customers by Profit", top_profit),
+                (_("Top Customers by Allocated Credit"), top_allocated),
+                (_("Top Customers by Revenue"), top_revenue),
+                (_("Top Customers by Profit"), top_profit),
             ),
             "provider_overview": provider_overview,
             "wallet_movements": wallet_movements,

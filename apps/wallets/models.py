@@ -1,6 +1,7 @@
 """Cryptocurrency wallet inventory models."""
 
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 
 from apps.core.models import TimeStampedModel
 from apps.currencies.models import Currency
@@ -22,8 +23,8 @@ class Wallet(TimeStampedModel):
 
     class Meta:
         ordering = ("name",)
-        verbose_name = "Wallet"
-        verbose_name_plural = "Wallets"
+        verbose_name = _("Wallet")
+        verbose_name_plural = _("Wallets")
         indexes = [
             models.Index(
                 fields=("currency", "network", "is_active"),

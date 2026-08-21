@@ -1,6 +1,7 @@
 """Unfold admin registration for the manual transaction ledger."""
 
 from django.contrib import admin
+from django.utils.translation import gettext_lazy as _
 
 from apps.core.admin import BaseModelAdmin
 from apps.currencies.models import Currency
@@ -68,7 +69,7 @@ class TransactionAdmin(BaseModelAdmin):
     readonly_fields = ("created_at", "updated_at")
     fieldsets = (
         (
-            "Transaction Information",
+            _("Transaction Information"),
             {
                 "fields": (
                     "transaction_type",
@@ -79,15 +80,15 @@ class TransactionAdmin(BaseModelAdmin):
             },
         ),
         (
-            "Related Objects",
+            _("Related Objects"),
             {"fields": ("customer", "wallet", "credit_purchase", "allocation")},
         ),
         (
-            "Financial Details",
+            _("Financial Details"),
             {"fields": ("amount", "currency", "exchange_rate")},
         ),
         (
-            "Valuation Snapshot",
+            _("Valuation Snapshot"),
             {
                 "fields": (
                     "converted_amount",
@@ -98,7 +99,7 @@ class TransactionAdmin(BaseModelAdmin):
             },
         ),
         (
-            "Metadata and Notes",
+            _("Metadata and Notes"),
             {
                 "fields": (
                     "counterparty",
@@ -108,7 +109,7 @@ class TransactionAdmin(BaseModelAdmin):
                 )
             },
         ),
-        ("Timestamps", {"fields": ("created_at", "updated_at")}),
+        (_("Timestamps"), {"fields": ("created_at", "updated_at")}),
     )
 
     def get_form(self, request, obj=None, **kwargs):

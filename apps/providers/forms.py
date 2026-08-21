@@ -1,6 +1,7 @@
 """Forms for managing provider connections in the Unfold admin."""
 
 from django import forms
+from django.utils.translation import gettext_lazy as _
 from unfold.widgets import UnfoldAdminPasswordWidget
 
 from apps.providers.models import APIEndpoint
@@ -10,11 +11,11 @@ class APIEndpointAdminForm(forms.ModelForm):
     """Keep existing keys out of rendered forms while allowing replacement."""
 
     api_key = forms.CharField(
-        label="API key",
+        label=_("API key"),
         required=False,
         strip=False,
         widget=UnfoldAdminPasswordWidget(render_value=False),
-        help_text="Required when creating an endpoint. Leave blank to keep the current key.",
+        help_text=_("Required when creating an endpoint. Leave blank to keep the current key."),
     )
 
     class Meta:
@@ -27,4 +28,4 @@ class APIEndpointAdminForm(forms.ModelForm):
             return value
         if self.instance.pk:
             return type(self.instance).objects.only("api_key").get(pk=self.instance.pk).api_key
-        raise forms.ValidationError("An API key is required when creating an endpoint.")
+        raise forms.ValidationError(_("An API key is required when creating an endpoint."))

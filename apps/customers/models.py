@@ -1,6 +1,7 @@
 """Customer record models."""
 
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 
 from apps.core.models import TimeStampedModel
 
@@ -9,9 +10,9 @@ class Customer(TimeStampedModel):
     """A customer managed by the TokenLedger operator."""
 
     class Status(models.TextChoices):
-        ACTIVE = "ACTIVE", "Active"
-        INACTIVE = "INACTIVE", "Inactive"
-        SUSPENDED = "SUSPENDED", "Suspended"
+        ACTIVE = "ACTIVE", _("Active")
+        INACTIVE = "INACTIVE", _("Inactive")
+        SUSPENDED = "SUSPENDED", _("Suspended")
 
     name = models.CharField(max_length=200)
     company_name = models.CharField(max_length=200, blank=True)
@@ -28,8 +29,8 @@ class Customer(TimeStampedModel):
 
     class Meta:
         ordering = ("-created_at",)
-        verbose_name = "Customer"
-        verbose_name_plural = "Customers"
+        verbose_name = _("Customer")
+        verbose_name_plural = _("Customers")
 
     def __str__(self) -> str:
         return self.name

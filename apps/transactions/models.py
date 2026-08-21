@@ -5,6 +5,7 @@ from decimal import Decimal
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 
 from apps.core.models import TimeStampedModel
 from apps.currencies.models import Currency
@@ -19,8 +20,8 @@ class ExpenseCategory(TimeStampedModel):
 
     class Meta:
         ordering = ("name",)
-        verbose_name = "Expense Category"
-        verbose_name_plural = "Expense Categories"
+        verbose_name = _("Expense Category")
+        verbose_name_plural = _("Expense Categories")
 
     def __str__(self) -> str:
         return self.name
@@ -30,15 +31,15 @@ class Transaction(TimeStampedModel):
     """A manually recorded financial event."""
 
     class TransactionType(models.TextChoices):
-        PURCHASE = "PURCHASE", "Purchase"
-        CUSTOMER_PAYMENT = "CUSTOMER_PAYMENT", "Customer Payment"
-        EXPENSE = "EXPENSE", "Expense"
-        REFUND = "REFUND", "Refund"
-        ADJUSTMENT = "ADJUSTMENT", "Adjustment"
+        PURCHASE = "PURCHASE", _("Purchase")
+        CUSTOMER_PAYMENT = "CUSTOMER_PAYMENT", _("Customer Payment")
+        EXPENSE = "EXPENSE", _("Expense")
+        REFUND = "REFUND", _("Refund")
+        ADJUSTMENT = "ADJUSTMENT", _("Adjustment")
 
     class Direction(models.TextChoices):
-        IN = "IN", "In"
-        OUT = "OUT", "Out"
+        IN = "IN", _("In")
+        OUT = "OUT", _("Out")
 
     _REQUIRED_DIRECTIONS = {
         TransactionType.PURCHASE: Direction.OUT,
@@ -138,8 +139,8 @@ class Transaction(TimeStampedModel):
 
     class Meta:
         ordering = ("-transaction_date", "-created_at")
-        verbose_name = "Transaction"
-        verbose_name_plural = "Transactions"
+        verbose_name = _("Transaction")
+        verbose_name_plural = _("Transactions")
         indexes = [
             models.Index(fields=("transaction_type", "transaction_date")),
             models.Index(fields=("customer", "transaction_date")),

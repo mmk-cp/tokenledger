@@ -2,6 +2,7 @@
 
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 
 from apps.core.models import TimeStampedModel
 
@@ -17,8 +18,8 @@ class Provider(TimeStampedModel):
 
     class Meta:
         ordering = ("name",)
-        verbose_name = "Provider"
-        verbose_name_plural = "Providers"
+        verbose_name = _("Provider")
+        verbose_name_plural = _("Providers")
 
     def __str__(self) -> str:
         return self.name
@@ -40,8 +41,8 @@ class APIEndpoint(TimeStampedModel):
 
     class Meta:
         ordering = ("provider__name", "name")
-        verbose_name = "API Endpoint"
-        verbose_name_plural = "API Endpoints"
+        verbose_name = _("API Endpoint")
+        verbose_name_plural = _("API Endpoints")
         indexes = [models.Index(fields=("provider", "is_active"))]
         permissions = (("view_sensitive_api_key", "Can view sensitive API keys"),)
 

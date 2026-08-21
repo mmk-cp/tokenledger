@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models, transaction
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 
 from apps.core.models import TimeStampedModel
 from apps.currencies.models import Currency
@@ -17,9 +18,9 @@ class CreditPurchase(TimeStampedModel):
     """A record of AI API credit purchased by the TokenLedger operator."""
 
     class Status(models.TextChoices):
-        ACTIVE = "ACTIVE", "Active"
-        EXPIRED = "EXPIRED", "Expired"
-        CANCELLED = "CANCELLED", "Cancelled"
+        ACTIVE = "ACTIVE", _("Active")
+        EXPIRED = "EXPIRED", _("Expired")
+        CANCELLED = "CANCELLED", _("Cancelled")
 
     provider = models.ForeignKey(
         Provider,
@@ -93,8 +94,8 @@ class CreditPurchase(TimeStampedModel):
 
     class Meta:
         ordering = ("-purchase_date", "-created_at")
-        verbose_name = "Credit Purchase"
-        verbose_name_plural = "Credit Purchases"
+        verbose_name = _("Credit Purchase")
+        verbose_name_plural = _("Credit Purchases")
         indexes = [
             models.Index(fields=("provider", "status")),
             models.Index(fields=("wallet", "purchase_date")),
@@ -179,8 +180,8 @@ class CreditBalance(TimeStampedModel):
 
     class Meta:
         ordering = ("-created_at",)
-        verbose_name = "Credit Balance"
-        verbose_name_plural = "Credit Balances"
+        verbose_name = _("Credit Balance")
+        verbose_name_plural = _("Credit Balances")
         constraints = [
             models.CheckConstraint(
                 condition=models.Q(used_credit_usd__gte=0),
@@ -229,10 +230,10 @@ class CustomerCreditAllocation(TimeStampedModel):
     """A snapshot of credit assigned from an owner purchase to a customer."""
 
     class Status(models.TextChoices):
-        ACTIVE = "ACTIVE", "Active"
-        EXPIRED = "EXPIRED", "Expired"
-        CANCELLED = "CANCELLED", "Cancelled"
-        COMPLETED = "COMPLETED", "Completed"
+        ACTIVE = "ACTIVE", _("Active")
+        EXPIRED = "EXPIRED", _("Expired")
+        CANCELLED = "CANCELLED", _("Cancelled")
+        COMPLETED = "COMPLETED", _("Completed")
 
     customer = models.ForeignKey(
         "customers.Customer",
@@ -283,8 +284,8 @@ class CustomerCreditAllocation(TimeStampedModel):
 
     class Meta:
         ordering = ("-start_date", "-created_at")
-        verbose_name = "Customer Credit Allocation"
-        verbose_name_plural = "Customer Credit Allocations"
+        verbose_name = _("Customer Credit Allocation")
+        verbose_name_plural = _("Customer Credit Allocations")
         indexes = [
             models.Index(fields=("customer", "status")),
             models.Index(fields=("credit_purchase", "status")),

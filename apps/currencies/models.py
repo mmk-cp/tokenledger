@@ -5,6 +5,7 @@ from decimal import Decimal
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 
 from apps.core.models import TimeStampedModel
 
@@ -13,8 +14,8 @@ class Currency(TimeStampedModel):
     """A dynamic fiat or cryptocurrency available to TokenLedger."""
 
     class CurrencyType(models.TextChoices):
-        FIAT = "FIAT", "Fiat"
-        CRYPTO = "CRYPTO", "Crypto"
+        FIAT = "FIAT", _("Fiat")
+        CRYPTO = "CRYPTO", _("Crypto")
 
     code = models.CharField(max_length=20, unique=True)
     name = models.CharField(max_length=100)
@@ -29,8 +30,8 @@ class Currency(TimeStampedModel):
 
     class Meta:
         ordering = ("code",)
-        verbose_name = "Currency"
-        verbose_name_plural = "Currencies"
+        verbose_name = _("Currency")
+        verbose_name_plural = _("Currencies")
 
     def save(self, *args, **kwargs):
         self.code = self.code.strip().upper()
@@ -65,8 +66,8 @@ class ExchangeRate(TimeStampedModel):
 
     class Meta:
         ordering = ("-effective_date", "base_currency", "target_currency")
-        verbose_name = "Exchange Rate"
-        verbose_name_plural = "Exchange Rates"
+        verbose_name = _("Exchange Rate")
+        verbose_name_plural = _("Exchange Rates")
         indexes = [
             models.Index(
                 fields=("base_currency", "target_currency", "effective_date"),

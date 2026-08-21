@@ -1,6 +1,7 @@
 """Unfold admin registration for cryptocurrency wallets."""
 
 from django.contrib import admin
+from django.utils.translation import gettext_lazy as _
 
 from apps.core.admin import BaseModelAdmin
 from apps.currencies.models import Currency
@@ -41,13 +42,13 @@ class WalletAdmin(BaseModelAdmin):
     readonly_fields = ("created_at", "updated_at")
     fieldsets = (
         (
-            "Wallet",
+            _("Wallet"),
             {"fields": ("name", "currency", "network", "address", "is_active")},
         ),
-        ("Description", {"fields": ("description",)}),
-        ("Timestamps", {"fields": ("created_at", "updated_at")}),
+        (_("Description"), {"fields": ("description",)}),
+        (_("Timestamps"), {"fields": ("created_at", "updated_at")}),
     )
 
-    @admin.display(description="Address", ordering="address")
+    @admin.display(description=_("Address"), ordering="address")
     def masked_address_display(self, obj: Wallet) -> str:
         return obj.masked_address
