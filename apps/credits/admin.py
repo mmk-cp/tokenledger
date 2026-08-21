@@ -1,9 +1,12 @@
 """Unfold admin registrations for credit purchases and balances."""
 
 from datetime import timedelta
+from decimal import Decimal
 
 from django.contrib import admin
-from django.db.models import F, Func, IntegerField, Value
+from django import forms
+from django.core.exceptions import ValidationError
+from django.db.models import F, Func, IntegerField, Sum, Value
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
@@ -62,6 +65,40 @@ class PurchaseExpirationFilter(admin.SimpleListFilter):
         if self.value() == "expired":
             return queryset.filter(expire_date__lt=today)
         return queryset
+
+
+class CustomerCreditAllocationAdminForm(forms.ModelForm):
+    """Validate allocation prerequisites as normal admin form errors."""
+
+    class Meta:
+        model = CustomerCreditAllocation
+        fields = "__all__"
+
+    def clean(self):
+        cleaned = super().clean()
+        purchase = cleaned.get("credit_purchase")
+        amount = cleaned.get("allocated_credit_usd")
+        if not purchase or not amount:
+            return cleaned
+
+        try:
+            balance = purchase.balance
+        except CreditBalance.DoesNotExist:
+            raise ValidationError(
+                _("Create a credit balance for the selected purchase before allocating it.")
+            )
+
+        allocated = purchase.customer_allocations.exclude(pk=self.instance.pk).aggregate(
+            total=Sum("allocated_credit_usd")
+        )["total"] or 0
+        available = balance.remaining_credit_usd - allocated
+        if amount > available:
+            self.add_error(
+                "allocated_credit_usd",
+                _("Only %(available)s USD remains available for this purchase.")
+                % {"available": f"{available:.2f}"},
+            )
+        return cleaned
 
 
 @admin.register(CreditPurchase)
@@ -199,10 +236,22 @@ class CreditBalanceAdmin(BaseModelAdmin):
         (_("Timestamps"), {"fields": ("created_at", "updated_at")}),
     )
 
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        if obj is None and "used_credit_usd" in form.base_fields:
+            form.base_fields["used_credit_usd"].initial = Decimal("0.00")
+            form.base_fields["used_credit_usd"].disabled = True
+            form.base_fields["used_credit_usd"].help_text = _(
+                "New balances always start with zero used credit."
+            )
+        return form
+
 
 @admin.register(CustomerCreditAllocation)
 class CustomerCreditAllocationAdmin(BaseModelAdmin):
     """Unfold administration for reseller credit assignments."""
+
+    form = CustomerCreditAllocationAdminForm
 
     list_display = (
         "customer",

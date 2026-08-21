@@ -62,6 +62,18 @@ class CreditPurchaseCurrencyTests(TestCase):
         allocation.refresh_from_db()
         self.assertEqual(self.purchase.exchange_rate, Decimal("1.25"))
         self.assertEqual(allocation.cost_price_usd, Decimal("25.00"))
+        balance.refresh_from_db()
+        self.assertEqual(balance.used_credit_usd, Decimal("40.00"))
+        self.assertEqual(balance.remaining_credit_usd, Decimal("60.00"))
+
+    def test_new_balance_always_starts_as_unused_inventory(self):
+        balance = CreditBalance.objects.create(
+            purchase=self.purchase,
+            used_credit_usd=Decimal("100.00"),
+        )
+
+        self.assertEqual(balance.total_credit_usd, Decimal("100.00"))
+        self.assertEqual(balance.used_credit_usd, Decimal("0.00"))
         self.assertEqual(balance.remaining_credit_usd, Decimal("100.00"))
 
     def test_add_form_offers_only_active_currencies(self):

@@ -207,6 +207,10 @@ class CreditBalance(TimeStampedModel):
     def save(self, *args, **kwargs):
         if self.purchase_id:
             total = self.purchase.credit_amount_usd
+            # A new balance represents untouched purchased inventory. Usage is
+            # recorded only by later inventory/consumption workflows.
+            if self._state.adding:
+                self.used_credit_usd = Decimal("0.00")
             if self.used_credit_usd < 0:
                 raise ValidationError("Used credit cannot be negative.")
             if self.used_credit_usd > total:
@@ -361,7 +365,7 @@ class CustomerCreditAllocation(TimeStampedModel):
         allocated_total = self.credit_purchase.customer_allocations.exclude(
             pk=self.pk
         ).aggregate(total=models.Sum("allocated_credit_usd"))["total"] or Decimal("0.00")
-        available = balance.remaining_credit_usd - allocated_total
+        available = balance.total_credit_usd - allocated_total
         if self.allocated_credit_usd > available:
             raise ValidationError(
                 {
@@ -385,6 +389,11 @@ class CustomerCreditAllocation(TimeStampedModel):
                 ) from exc
             self._validate_available_credit(balance)
             super().save(*args, **kwargs)
+            allocated_total = self.credit_purchase.customer_allocations.aggregate(
+                total=models.Sum("allocated_credit_usd")
+            )["total"] or Decimal("0.00")
+            balance.used_credit_usd = allocated_total
+            balance.save(update_fields=("used_credit_usd",))
 
     def __str__(self) -> str:
         return f"{self.customer.name} - {self.allocated_credit_usd} USD"

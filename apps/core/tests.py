@@ -158,7 +158,7 @@ class DashboardTests(TestCase):
         self.assertEqual(metrics["Allocated Credit (USD)"], "40.00")
         self.assertEqual(metrics["Remaining Available Credit (USD)"], "60.00")
         self.assertEqual(metrics["Total Customer Credit Value (USD)"], "40.00")
-        self.assertEqual(metrics["Total Available Credit (USD)"], "100.00")
+        self.assertEqual(metrics["Total Available Credit (USD)"], "60.00")
         self.assertEqual(metrics["Total Cost Basis (USD)"], "30.00")
         self.assertEqual(metrics["Total Purchased Cost (USD)"], "100.00")
         self.assertEqual(metrics["Total Credit Purchased (USD)"], "100.00")
