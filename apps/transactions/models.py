@@ -9,6 +9,22 @@ from django.db import models
 from apps.core.models import TimeStampedModel
 
 
+class ExpenseCategory(TimeStampedModel):
+    """A reusable category for organizing business expenses."""
+
+    name = models.CharField(max_length=255, unique=True)
+    description = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ("name",)
+        verbose_name = "Expense Category"
+        verbose_name_plural = "Expense Categories"
+
+    def __str__(self) -> str:
+        return self.name
+
+
 class Transaction(TimeStampedModel):
     """A manually recorded financial event."""
 
@@ -67,6 +83,13 @@ class Transaction(TimeStampedModel):
         null=True,
         blank=True,
     )
+    expense_category = models.ForeignKey(
+        ExpenseCategory,
+        on_delete=models.PROTECT,
+        related_name="transactions",
+        null=True,
+        blank=True,
+    )
     amount = models.DecimalField(
         max_digits=18,
         decimal_places=8,
@@ -82,6 +105,8 @@ class Transaction(TimeStampedModel):
     )
     description = models.TextField(blank=True)
     reference = models.CharField(max_length=255, blank=True)
+    counterparty = models.CharField(max_length=255, blank=True)
+    external_reference = models.CharField(max_length=255, blank=True)
     transaction_date = models.DateField(db_index=True)
 
     class Meta:
