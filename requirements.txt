@@ -1,4 +1,5 @@
 Django==5.2.17
+cryptography==46.0.3
 django-environ==0.14.0
 django-unfold==0.104.1
 gunicorn==26.1.0

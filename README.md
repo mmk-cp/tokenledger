@@ -11,6 +11,7 @@ This repository currently contains the project foundation only. Business models,
 - Django Unfold for the complete administration interface
 - MySQL with mysqlclient
 - django-environ for environment-based configuration
+- cryptography for encrypted upstream API keys
 - WhiteNoise for production static-file serving
 - Gunicorn as the production WSGI server
 
@@ -36,6 +37,12 @@ This repository currently contains the project foundation only. Business models,
    ```
 
 4. Create a MySQL database and user matching the `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, and `DB_PORT` values in `.env`.
+
+   Set `API_KEY_ENCRYPTION_KEY` to a stable Fernet key before creating API endpoints. Generate one with:
+
+   ```bash
+   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+   ```
 
 5. Apply Django's built-in migrations and create an administrator:
 
