@@ -5,6 +5,7 @@ from django.dispatch import receiver
 
 from apps.core.audit_context import get_audit_user
 from apps.core.models import AuditLog
+from apps.currencies.models import ExchangeRate
 from apps.credits.models import CreditPurchase, CustomerCreditAllocation
 from apps.customers.models import Customer
 from apps.providers.models import APIEndpoint, Provider
@@ -20,6 +21,7 @@ TRACKED_MODELS = (
     Customer,
     Transaction,
     ExpenseCategory,
+    ExchangeRate,
 )
 
 
@@ -50,6 +52,7 @@ def _create_audit_log(instance: object, action: str) -> None:
 @receiver(post_save, sender=Customer, dispatch_uid="audit_customer_save")
 @receiver(post_save, sender=Transaction, dispatch_uid="audit_transaction_save")
 @receiver(post_save, sender=ExpenseCategory, dispatch_uid="audit_expense_category_save")
+@receiver(post_save, sender=ExchangeRate, dispatch_uid="audit_exchange_rate_save")
 def audit_model_save(sender, instance, created: bool, **kwargs) -> None:
     """Record CREATE and UPDATE events for tracked models."""
     _create_audit_log(instance, "CREATE" if created else "UPDATE")
@@ -67,6 +70,7 @@ def audit_model_save(sender, instance, created: bool, **kwargs) -> None:
 @receiver(post_delete, sender=Customer, dispatch_uid="audit_customer_delete")
 @receiver(post_delete, sender=Transaction, dispatch_uid="audit_transaction_delete")
 @receiver(post_delete, sender=ExpenseCategory, dispatch_uid="audit_expense_category_delete")
+@receiver(post_delete, sender=ExchangeRate, dispatch_uid="audit_exchange_rate_delete")
 def audit_model_delete(sender, instance, **kwargs) -> None:
     """Record DELETE events for tracked models."""
     _create_audit_log(instance, "DELETE")

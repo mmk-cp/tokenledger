@@ -39,6 +39,7 @@ LOCAL_APPS = [
     "apps.customers.apps.CustomersConfig",
     "apps.credits.apps.CreditsConfig",
     "apps.transactions.apps.TransactionsConfig",
+    "apps.currencies.apps.CurrenciesConfig",
     "apps.billing.apps.BillingConfig",
 ]
 
