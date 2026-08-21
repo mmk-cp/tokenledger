@@ -330,3 +330,14 @@ class CustomerAdminTests(TestCase):
         queryset = allocation_admin.get_queryset(request)
         self.assertEqual(queryset.get(pk=active.pk).admin_days_until_expiration, 5)
         self.assertIsNone(queryset.get(pk=no_date.pk).admin_days_until_expiration)
+
+    def test_credit_allocation_add_form_profit_display_handles_blank_object(self):
+        allocation_admin = CustomerCreditAllocationAdmin(
+            CustomerCreditAllocation, admin.site
+        )
+        blank_allocation = CustomerCreditAllocation()
+
+        self.assertEqual(
+            allocation_admin.profit_usd_display(blank_allocation),
+            "-",
+        )

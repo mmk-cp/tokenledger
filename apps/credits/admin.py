@@ -181,6 +181,10 @@ class CustomerCreditAllocationAdmin(BaseModelAdmin):
 
     @admin.display(description="Profit (USD)")
     def profit_usd_display(self, obj: CustomerCreditAllocation):
+        # The add form evaluates read-only display methods before required
+        # amount fields have been entered. Keep that form state renderable.
+        if obj is None or obj.selling_price_usd is None:
+            return "-"
         return obj.profit_usd
 
     def get_queryset(self, request):
