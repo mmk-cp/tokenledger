@@ -59,6 +59,28 @@ class CreditPurchase(TimeStampedModel):
         decimal_places=8,
         validators=[MinValueValidator(Decimal("0.00000001"))],
     )
+    converted_amount = models.DecimalField(
+        max_digits=24,
+        decimal_places=12,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0.000000000001"))],
+    )
+    converted_currency = models.ForeignKey(
+        Currency,
+        on_delete=models.PROTECT,
+        related_name="converted_credit_purchases",
+        null=True,
+        blank=True,
+    )
+    conversion_rate = models.DecimalField(
+        max_digits=24,
+        decimal_places=12,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0.000000000001"))],
+    )
+    conversion_date = models.DateField(null=True, blank=True)
     purchase_date = models.DateField(default=timezone.localdate, db_index=True)
     expire_date = models.DateField(null=True, blank=True, db_index=True)
     status = models.CharField(
@@ -103,6 +125,26 @@ class CreditPurchase(TimeStampedModel):
                 errors["endpoint"] = "The endpoint must belong to the selected provider."
         if self.expire_date and self.purchase_date and self.expire_date < self.purchase_date:
             errors["expire_date"] = "Expiration date cannot be before purchase date."
+        snapshot_values = (
+            self.converted_amount,
+            self.converted_currency_id,
+            self.conversion_rate,
+            self.conversion_date,
+        )
+        snapshot_complete = all(value is not None for value in snapshot_values)
+        if any(value is not None for value in snapshot_values) and not snapshot_complete:
+            errors["converted_amount"] = (
+                "All valuation snapshot fields must be provided together."
+            )
+        if snapshot_complete and self.paid_currency_id == self.converted_currency_id:
+            if self.conversion_rate != Decimal("1"):
+                errors["conversion_rate"] = (
+                    "Same-currency snapshots must use a conversion rate of 1."
+                )
+            if self.converted_amount != self.paid_amount:
+                errors["converted_amount"] = (
+                    "Same-currency snapshots must match the original paid amount."
+                )
         if errors:
             raise ValidationError(errors)
 

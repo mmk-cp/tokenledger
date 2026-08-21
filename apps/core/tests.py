@@ -50,7 +50,7 @@ class AuditSignalTests(TestCase):
             transaction_type=Transaction.TransactionType.EXPENSE,
             direction=Transaction.Direction.OUT,
             amount=Decimal("10.00"),
-            currency="USD",
+            currency=Currency.objects.get(code="USD"),
             transaction_date=date.today(),
         )
         object_id = str(transaction.pk)
@@ -115,14 +115,14 @@ class DashboardTests(TestCase):
             transaction_type=Transaction.TransactionType.CUSTOMER_PAYMENT,
             direction=Transaction.Direction.IN,
             amount=Decimal("75.00"),
-            currency="USD",
+            currency=Currency.objects.get(code="USD"),
             transaction_date=date.today(),
         )
         Transaction.objects.create(
             transaction_type=Transaction.TransactionType.EXPENSE,
             direction=Transaction.Direction.OUT,
             amount=Decimal("25.00"),
-            currency="USD",
+            currency=Currency.objects.get(code="USD"),
             transaction_date=date.today(),
         )
         request = RequestFactory().get("/admin/")
@@ -139,6 +139,9 @@ class DashboardTests(TestCase):
         self.assertEqual(metrics["Total Customer Credit Value (USD)"], "40.00")
         self.assertEqual(metrics["Total Available Credit (USD)"], "100.00")
         self.assertEqual(metrics["Total Cost Basis (USD)"], "30.00")
+        self.assertEqual(metrics["Total Purchased Cost (USD)"], "100.00")
+        self.assertEqual(metrics["Total Credit Purchased (USD)"], "100.00")
+        self.assertEqual(metrics["Average Purchase Cost"], "1.000000")
         self.assertEqual(metrics["Money Received (USD)"], "75.00")
         self.assertEqual(metrics["Money Spent (USD)"], "25.00")
         self.assertEqual(metrics["Net Cash Flow (USD)"], "50.00")
@@ -169,28 +172,28 @@ class DashboardTests(TestCase):
             transaction_type=Transaction.TransactionType.CUSTOMER_PAYMENT,
             direction=Transaction.Direction.IN,
             amount=Decimal("100.00"),
-            currency="USDT",
+            currency=Currency.objects.get(code="USDT"),
             transaction_date=conversion_date,
         )
         Transaction.objects.create(
             transaction_type=Transaction.TransactionType.CUSTOMER_PAYMENT,
             direction=Transaction.Direction.IN,
             amount=Decimal("50.00"),
-            currency="EUR",
+            currency=Currency.objects.get(code="EUR"),
             transaction_date=conversion_date,
         )
         Transaction.objects.create(
             transaction_type=Transaction.TransactionType.CUSTOMER_PAYMENT,
             direction=Transaction.Direction.IN,
             amount=Decimal("10.00"),
-            currency="BTC",
+            currency=Currency.objects.get(code="BTC"),
             transaction_date=conversion_date,
         )
         Transaction.objects.create(
             transaction_type=Transaction.TransactionType.EXPENSE,
             direction=Transaction.Direction.OUT,
             amount=Decimal("25.00"),
-            currency="USDT",
+            currency=Currency.objects.get(code="USDT"),
             transaction_date=conversion_date,
         )
         request = RequestFactory().get("/admin/")
@@ -204,6 +207,101 @@ class DashboardTests(TestCase):
         self.assertEqual(metrics["Money Received (USD)"], "160.00")
         self.assertEqual(metrics["Money Spent (USD)"], "25.00")
         self.assertEqual(metrics["Net Cash Flow (USD)"], "135.00")
+
+    def test_dashboard_prefers_usd_snapshot_over_live_conversion(self):
+        user = User.objects.create_user(
+            username="snapshot-admin",
+            email="snapshot-admin@example.com",
+            password="test-password",
+            is_staff=True,
+        )
+        usdt = Currency.objects.get(code="USDT")
+        usd = Currency.objects.get(code="USD")
+        transaction = Transaction.objects.create(
+            transaction_type=Transaction.TransactionType.CUSTOMER_PAYMENT,
+            direction=Transaction.Direction.IN,
+            amount=Decimal("100.00"),
+            currency=usdt,
+            converted_amount=Decimal("125.00"),
+            converted_currency=usd,
+            conversion_rate=Decimal("1.25"),
+            conversion_date=date.today(),
+            transaction_date=date.today(),
+        )
+        request = RequestFactory().get("/admin/")
+        request.user = user
+        context = dashboard_callback(request, {})
+        metrics = {item["label"]: item["value"] for item in context["dashboard_metrics"]}
+        self.assertEqual(metrics["Money Received (USD)"], "125.00")
+        transaction.delete()
+
+    def test_dashboard_purchase_cost_prefers_snapshot_and_falls_back(self):
+        user = User.objects.create_user(
+            username="purchase-dashboard-admin",
+            email="purchase-dashboard@example.com",
+            password="test-password",
+            is_staff=True,
+        )
+        usd = Currency.objects.get(code="USD")
+        usdt = Currency.objects.get(code="USDT")
+        eur = Currency.objects.get(code="EUR")
+        provider = Provider.objects.create(name="Cost Provider", slug="cost-provider")
+        wallet = Wallet.objects.create(
+            name="Cost Wallet",
+            currency=usdt,
+            network="Internal",
+            address="dashboard-purchase-cost-wallet",
+        )
+        valuation_date = date(2026, 8, 21)
+        ExchangeRate.objects.create(
+            base_currency=eur,
+            target_currency=usd,
+            rate=Decimal("1.20"),
+            effective_date=date(2026, 8, 1),
+        )
+        CreditPurchase.objects.create(
+            provider=provider,
+            wallet=wallet,
+            name="Snapshot Cost",
+            credit_amount_usd=Decimal("200.00"),
+            paid_amount=Decimal("100.00"),
+            paid_currency=usdt,
+            exchange_rate=Decimal("1.00"),
+            converted_amount=Decimal("150.00"),
+            converted_currency=usd,
+            conversion_rate=Decimal("1.50"),
+            conversion_date=valuation_date,
+            purchase_date=valuation_date,
+        )
+        CreditPurchase.objects.create(
+            provider=provider,
+            wallet=wallet,
+            name="Fallback Cost",
+            credit_amount_usd=Decimal("100.00"),
+            paid_amount=Decimal("50.00"),
+            paid_currency=eur,
+            exchange_rate=Decimal("1.20"),
+            purchase_date=valuation_date,
+        )
+        CreditPurchase.objects.create(
+            provider=provider,
+            wallet=wallet,
+            name="Missing Rate Cost",
+            credit_amount_usd=Decimal("50.00"),
+            paid_amount=Decimal("1.00"),
+            paid_currency=Currency.objects.get(code="BTC"),
+            exchange_rate=Decimal("1.00"),
+            purchase_date=valuation_date,
+        )
+        request = RequestFactory().get("/admin/")
+        request.user = user
+
+        context = dashboard_callback(request, {})
+        metrics = {item["label"]: item["value"] for item in context["dashboard_metrics"]}
+
+        self.assertEqual(metrics["Total Purchased Cost (USD)"], "210.00")
+        self.assertEqual(metrics["Total Credit Purchased (USD)"], "350.00")
+        self.assertEqual(metrics["Average Purchase Cost"], "0.600000")
 
 
 class CustomerAdminTests(TestCase):
@@ -257,7 +355,7 @@ class CustomerAdminTests(TestCase):
             transaction_type=Transaction.TransactionType.CUSTOMER_PAYMENT,
             direction=Transaction.Direction.IN,
             amount=Decimal("100.00"),
-            currency="USD",
+            currency=Currency.objects.get(code="USD"),
             transaction_date=date.today(),
         )
         Transaction.objects.create(
@@ -265,7 +363,7 @@ class CustomerAdminTests(TestCase):
             transaction_type=Transaction.TransactionType.REFUND,
             direction=Transaction.Direction.OUT,
             amount=Decimal("20.00"),
-            currency="USD",
+            currency=Currency.objects.get(code="USD"),
             transaction_date=date.today(),
         )
         financial = admin_instance.financial_summary(self.customer)

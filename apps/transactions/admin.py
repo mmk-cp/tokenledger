@@ -3,6 +3,7 @@
 from django.contrib import admin
 
 from apps.core.admin import BaseModelAdmin
+from apps.currencies.models import Currency
 from apps.transactions.models import ExpenseCategory, Transaction
 
 
@@ -47,6 +48,8 @@ class TransactionAdmin(BaseModelAdmin):
         "counterparty",
         "external_reference",
         "expense_category__name",
+        "currency__code",
+        "currency__name",
         "allocation__customer__name",
         "credit_purchase__name",
         "credit_purchase__provider__name",
@@ -55,6 +58,7 @@ class TransactionAdmin(BaseModelAdmin):
     )
     ordering = ("-transaction_date", "-created_at")
     list_select_related = (
+        "currency",
         "customer",
         "wallet",
         "credit_purchase",
@@ -83,6 +87,17 @@ class TransactionAdmin(BaseModelAdmin):
             {"fields": ("amount", "currency", "exchange_rate")},
         ),
         (
+            "Valuation Snapshot",
+            {
+                "fields": (
+                    "converted_amount",
+                    "converted_currency",
+                    "conversion_rate",
+                    "conversion_date",
+                )
+            },
+        ),
+        (
             "Metadata and Notes",
             {
                 "fields": (
@@ -95,3 +110,11 @@ class TransactionAdmin(BaseModelAdmin):
         ),
         ("Timestamps", {"fields": ("created_at", "updated_at")}),
     )
+
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        if obj is None:
+            form.base_fields["currency"].queryset = Currency.objects.filter(
+                is_active=True
+            ).order_by("code")
+        return form

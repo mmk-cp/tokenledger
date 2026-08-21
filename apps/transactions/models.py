@@ -7,6 +7,7 @@ from django.core.validators import MinValueValidator
 from django.db import models
 
 from apps.core.models import TimeStampedModel
+from apps.currencies.models import Currency
 
 
 class ExpenseCategory(TimeStampedModel):
@@ -95,7 +96,11 @@ class Transaction(TimeStampedModel):
         decimal_places=8,
         validators=[MinValueValidator(Decimal("0.00000001"))],
     )
-    currency = models.CharField(max_length=20, db_index=True)
+    currency = models.ForeignKey(
+        Currency,
+        on_delete=models.PROTECT,
+        related_name="transactions",
+    )
     exchange_rate = models.DecimalField(
         max_digits=18,
         decimal_places=8,
@@ -103,6 +108,28 @@ class Transaction(TimeStampedModel):
         blank=True,
         validators=[MinValueValidator(Decimal("0.00000001"))],
     )
+    converted_amount = models.DecimalField(
+        max_digits=24,
+        decimal_places=12,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0.000000000001"))],
+    )
+    converted_currency = models.ForeignKey(
+        Currency,
+        on_delete=models.PROTECT,
+        related_name="converted_transactions",
+        null=True,
+        blank=True,
+    )
+    conversion_rate = models.DecimalField(
+        max_digits=24,
+        decimal_places=12,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0.000000000001"))],
+    )
+    conversion_date = models.DateField(null=True, blank=True)
     description = models.TextField(blank=True)
     reference = models.CharField(max_length=255, blank=True)
     counterparty = models.CharField(max_length=255, blank=True)
@@ -149,6 +176,27 @@ class Transaction(TimeStampedModel):
                 )
             self.customer = allocation.customer
             self.credit_purchase = allocation.credit_purchase
+
+        snapshot_values = (
+            self.converted_amount,
+            self.converted_currency_id,
+            self.conversion_rate,
+            self.conversion_date,
+        )
+        snapshot_complete = all(value is not None for value in snapshot_values)
+        if any(value is not None for value in snapshot_values) and not snapshot_complete:
+            errors["converted_amount"] = (
+                "All valuation snapshot fields must be provided together."
+            )
+        if snapshot_complete and self.currency_id == self.converted_currency_id:
+            if self.conversion_rate != Decimal("1"):
+                errors["conversion_rate"] = (
+                    "Same-currency snapshots must use a conversion rate of 1."
+                )
+            if self.converted_amount != self.amount:
+                errors["converted_amount"] = (
+                    "Same-currency snapshots must match the original amount."
+                )
 
         if errors:
             raise ValidationError(errors)

@@ -90,6 +90,17 @@ class CreditPurchaseAdmin(BaseModelAdmin):
                 )
             },
         ),
+        (
+            "Valuation Snapshot",
+            {
+                "fields": (
+                    "converted_amount",
+                    "converted_currency",
+                    "conversion_rate",
+                    "conversion_date",
+                )
+            },
+        ),
         ("Dates", {"fields": ("purchase_date", "expire_date")}),
         ("Notes", {"fields": ("notes",)}),
         ("Timestamps", {"fields": ("created_at", "updated_at")}),

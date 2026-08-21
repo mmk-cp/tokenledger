@@ -1,9 +1,11 @@
 """Tests for credit purchase currency relations and snapshots."""
 
 from decimal import Decimal
+from datetime import date
 
 from django.contrib import admin
 from django.db.models.deletion import ProtectedError
+from django.core.exceptions import ValidationError
 from django.test import RequestFactory, TestCase
 
 from apps.core.models import User
@@ -82,3 +84,35 @@ class CreditPurchaseCurrencyTests(TestCase):
         queryset = form.base_fields["paid_currency"].queryset
         self.assertTrue(queryset.filter(pk=self.currency.pk).exists())
         self.assertFalse(queryset.filter(pk=inactive.pk).exists())
+
+    def test_purchase_without_valuation_snapshot_works(self):
+        self.assertIsNone(self.purchase.converted_amount)
+
+    def test_complete_valuation_snapshot_works(self):
+        usd = Currency.objects.get(code="USD")
+        self.purchase.converted_amount = Decimal("62.50")
+        self.purchase.converted_currency = usd
+        self.purchase.conversion_rate = Decimal("1.25")
+        self.purchase.conversion_date = date.today()
+        self.purchase.full_clean()
+        self.purchase.save()
+        self.purchase.refresh_from_db()
+        self.assertEqual(self.purchase.converted_amount, Decimal("62.500000000000"))
+
+    def test_partial_valuation_snapshot_is_rejected(self):
+        self.purchase.converted_amount = Decimal("62.50")
+        with self.assertRaises(ValidationError):
+            self.purchase.full_clean()
+
+    def test_same_currency_snapshot_requires_identity_values(self):
+        self.purchase.converted_amount = Decimal("50.00")
+        self.purchase.converted_currency = self.currency
+        self.purchase.conversion_rate = Decimal("1.10")
+        self.purchase.conversion_date = date.today()
+        with self.assertRaises(ValidationError):
+            self.purchase.full_clean()
+
+        self.purchase.conversion_rate = Decimal("1")
+        self.purchase.converted_amount = Decimal("49.99")
+        with self.assertRaises(ValidationError):
+            self.purchase.full_clean()

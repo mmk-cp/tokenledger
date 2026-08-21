@@ -172,13 +172,25 @@ def _converted_transaction_total(
     """Return a dashboard-currency total, ignoring rows without a usable rate."""
     total = Decimal("0")
 
-    for transaction in queryset.values("amount", "currency", "transaction_date").iterator():
-        rate_key = (transaction["currency"], transaction["transaction_date"])
+    for transaction in queryset.values(
+        "amount",
+        "currency__code",
+        "converted_amount",
+        "converted_currency__code",
+        "transaction_date",
+    ).iterator():
+        if (
+            transaction["converted_amount"] is not None
+            and transaction["converted_currency__code"] == DASHBOARD_CURRENCY
+        ):
+            total += transaction["converted_amount"]
+            continue
+        rate_key = (transaction["currency__code"], transaction["transaction_date"])
         if rate_key not in conversion_factors:
             try:
                 conversion_factors[rate_key] = convert_amount(
                     amount=Decimal("1"),
-                    from_currency=transaction["currency"],
+                    from_currency=transaction["currency__code"],
                     to_currency=DASHBOARD_CURRENCY,
                     date=transaction["transaction_date"],
                 )
@@ -189,6 +201,44 @@ def _converted_transaction_total(
         if factor is not None:
             total += transaction["amount"] * factor
 
+    return total
+
+
+def _converted_purchase_cost_total(
+    queryset,
+    conversion_factors: dict[tuple[str, object], Decimal | None],
+) -> Decimal:
+    """Return active purchase cost in USD, preferring stored valuation snapshots."""
+    total = Decimal("0")
+    for purchase in queryset.values(
+        "paid_amount",
+        "paid_currency__code",
+        "converted_amount",
+        "converted_currency__code",
+        "purchase_date",
+    ).iterator():
+        if (
+            purchase["converted_amount"] is not None
+            and purchase["converted_currency__code"] == DASHBOARD_CURRENCY
+        ):
+            total += purchase["converted_amount"]
+            continue
+
+        rate_key = (purchase["paid_currency__code"], purchase["purchase_date"])
+        if rate_key not in conversion_factors:
+            try:
+                conversion_factors[rate_key] = convert_amount(
+                    amount=Decimal("1"),
+                    from_currency=purchase["paid_currency__code"],
+                    to_currency=DASHBOARD_CURRENCY,
+                    date=purchase["purchase_date"],
+                )
+            except CurrencyConversionError:
+                conversion_factors[rate_key] = None
+
+        factor = conversion_factors[rate_key]
+        if factor is not None:
+            total += purchase["paid_amount"] * factor
     return total
 
 
@@ -213,6 +263,19 @@ def dashboard_callback(request: HttpRequest, context: dict) -> dict:
         total=Sum("cost_price_usd")
     )["total"] or 0
     conversion_factors: dict[tuple[str, object], Decimal | None] = {}
+    active_purchases = CreditPurchase.objects.filter(status=CreditPurchase.Status.ACTIVE)
+    total_purchase_cost = _converted_purchase_cost_total(
+        active_purchases,
+        conversion_factors,
+    )
+    total_credit_purchased = active_purchases.aggregate(
+        total=Sum("credit_amount_usd")
+    )["total"] or Decimal("0")
+    average_purchase_cost = (
+        total_purchase_cost / total_credit_purchased
+        if total_credit_purchased
+        else Decimal("0")
+    )
     received = _converted_transaction_total(
         Transaction.objects.filter(
             transaction_type=Transaction.TransactionType.CUSTOMER_PAYMENT,
@@ -269,6 +332,18 @@ def dashboard_callback(request: HttpRequest, context: dict) -> dict:
                     "value": f"{available_credit:,.2f}",
                 },
                 {"label": "Total Cost Basis (USD)", "value": f"{cost_basis:,.2f}"},
+                {
+                    "label": "Total Purchased Cost (USD)",
+                    "value": f"{total_purchase_cost:,.2f}",
+                },
+                {
+                    "label": "Total Credit Purchased (USD)",
+                    "value": f"{total_credit_purchased:,.2f}",
+                },
+                {
+                    "label": "Average Purchase Cost",
+                    "value": f"{average_purchase_cost:,.6f}",
+                },
                 {
                     "label": f"Money Received ({DASHBOARD_CURRENCY})",
                     "value": f"{received:,.2f}",
