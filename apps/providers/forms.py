@@ -1,6 +1,7 @@
 """Forms for managing provider connections in the Unfold admin."""
 
 from django import forms
+from unfold.widgets import UnfoldAdminPasswordWidget
 
 from apps.providers.models import APIEndpoint
 
@@ -12,7 +13,7 @@ class APIEndpointAdminForm(forms.ModelForm):
         label="API key",
         required=False,
         strip=False,
-        widget=forms.PasswordInput(render_value=True),
+        widget=UnfoldAdminPasswordWidget(render_value=False),
         help_text="Required when creating an endpoint. Leave blank to keep the current key.",
     )
 

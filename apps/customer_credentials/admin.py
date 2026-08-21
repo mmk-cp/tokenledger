@@ -1,4 +1,5 @@
 from django.contrib import admin
+from unfold.widgets import UnfoldAdminPasswordWidget
 
 from apps.core.admin import BaseModelAdmin
 from apps.customer_credentials.forms import CustomerCredentialAdminForm
@@ -24,13 +25,15 @@ class CustomerCredentialAdmin(BaseModelAdmin):
 
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)
-        if not request.user.has_perm("customer_credentials.view_sensitive_api_key"):
+        if obj is not None and not request.user.has_perm("customer_credentials.view_sensitive_api_key"):
             form.base_fields.pop("api_key", None)
+        elif obj is not None:
+            form.base_fields["api_key"].widget = UnfoldAdminPasswordWidget(render_value=True)
         return form
 
     def get_fieldsets(self, request, obj=None):
         fieldsets = super().get_fieldsets(request, obj)
-        if request.user.has_perm("customer_credentials.view_sensitive_api_key"):
+        if obj is None or request.user.has_perm("customer_credentials.view_sensitive_api_key"):
             return fieldsets
         return tuple(
             (title, {**options, "fields": tuple(

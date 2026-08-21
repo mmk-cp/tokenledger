@@ -1,10 +1,11 @@
 from django import forms
+from unfold.widgets import UnfoldAdminPasswordWidget
 
 from apps.customer_credentials.models import CustomerCredential
 
 
 class CustomerCredentialAdminForm(forms.ModelForm):
-    api_key = forms.CharField(required=False, strip=False, widget=forms.PasswordInput(render_value=True), help_text="Required when creating a credential. Leave blank to keep the current key.")
+    api_key = forms.CharField(required=False, strip=False, widget=UnfoldAdminPasswordWidget(render_value=False), help_text="Required when creating a credential. Leave blank to keep the current key.")
 
     class Meta:
         model = CustomerCredential
