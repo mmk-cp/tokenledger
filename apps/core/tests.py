@@ -20,6 +20,53 @@ from apps.transactions.models import Transaction
 from apps.wallets.models import Wallet
 
 
+class RootURLTests(TestCase):
+    def test_root_redirects_to_admin(self):
+        response = self.client.get("/")
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], "/admin/")
+
+    def test_admin_url_still_resolves(self):
+        response = self.client.get("/admin/")
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/admin/login/", response["Location"])
+
+    def test_accounts_profile_redirects_to_admin(self):
+        response = self.client.get("/accounts/profile/")
+
+        self.assertRedirects(response, "/admin/", fetch_redirect_response=False)
+
+    def test_successful_admin_login_redirects_to_dashboard(self):
+        User.objects.create_superuser(
+            username="login-admin",
+            email="login-admin@example.com",
+            password="test-password",
+        )
+
+        response = self.client.post(
+            "/admin/login/",
+            {"username": "login-admin", "password": "test-password"},
+        )
+
+        self.assertRedirects(response, "/admin/", fetch_redirect_response=False)
+
+    def test_admin_logout_redirects_to_admin_login(self):
+        user = User.objects.create_superuser(
+            username="logout-admin",
+            email="logout-admin@example.com",
+            password="test-password",
+        )
+        self.client.force_login(user)
+
+        response = self.client.post("/admin/logout/")
+
+        self.assertRedirects(
+            response, "/admin/login/", fetch_redirect_response=False
+        )
+
+
 class AuditSignalTests(TestCase):
     def test_creating_customer_creates_audit_log(self):
         customer = Customer.objects.create(name="Ali")
