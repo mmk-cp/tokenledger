@@ -25,7 +25,6 @@ class CustomerCredentialAllocationTests(TestCase):
         self.customer = Customer.objects.create(name="Credential Customer", email="credential@example.com")
         self.wallet = Wallet.objects.create(name="Credential Wallet", currency=self.currency, network="TRC20", address="credential-wallet-address")
         self.purchase = CreditPurchase.objects.create(provider=self.provider, wallet=self.wallet, name="Credential Purchase", credit_amount_usd=Decimal("100.00"), paid_amount=Decimal("50.00"), paid_currency=self.currency, exchange_rate=Decimal("1.00"))
-        CreditBalance.objects.create(purchase=self.purchase, used_credit_usd=Decimal("0.00"))
         self.allocation = CustomerCreditAllocation.objects.create(customer=self.customer, credit_purchase=self.purchase, allocated_credit_usd=Decimal("20.00"), selling_price_usd=Decimal("25.00"))
 
     def credential(self, **kwargs):

@@ -216,7 +216,9 @@ class CreditBalanceAdmin(BaseModelAdmin):
     ordering = ("-created_at",)
     list_select_related = ("purchase", "purchase__provider")
     readonly_fields = (
+        "purchase",
         "total_credit_usd",
+        "used_credit_usd",
         "remaining_credit_usd",
         "created_at",
         "updated_at",
@@ -236,15 +238,11 @@ class CreditBalanceAdmin(BaseModelAdmin):
         (_("Timestamps"), {"fields": ("created_at", "updated_at")}),
     )
 
-    def get_form(self, request, obj=None, **kwargs):
-        form = super().get_form(request, obj, **kwargs)
-        if obj is None and "used_credit_usd" in form.base_fields:
-            form.base_fields["used_credit_usd"].initial = Decimal("0.00")
-            form.base_fields["used_credit_usd"].disabled = True
-            form.base_fields["used_credit_usd"].help_text = _(
-                "New balances always start with zero used credit."
-            )
-        return form
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(CustomerCreditAllocation)

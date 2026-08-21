@@ -7,7 +7,7 @@ from apps.core.audit_context import get_audit_user
 from apps.core.models import AuditLog
 from apps.currencies.models import Currency, ExchangeRate
 from apps.customer_credentials.models import CustomerCredential
-from apps.credits.models import CreditPurchase, CustomerCreditAllocation
+from apps.credits.models import CreditBalance, CreditPurchase, CustomerCreditAllocation
 from apps.customers.models import Customer
 from apps.providers.models import APIEndpoint, Provider
 from apps.transactions.models import ExpenseCategory, Transaction
@@ -113,6 +113,7 @@ def create_purchase_transaction(sender, instance, created: bool, **kwargs) -> No
     """Record the cash outflow represented by a newly created purchase."""
     if not created:
         return
+    CreditBalance.objects.create(purchase=instance)
     Transaction.objects.create(
         transaction_type=Transaction.TransactionType.PURCHASE,
         direction=Transaction.Direction.OUT,

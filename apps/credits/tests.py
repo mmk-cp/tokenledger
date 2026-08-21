@@ -56,7 +56,6 @@ class CreditPurchaseCurrencyTests(TestCase):
         self.assertEqual(Transaction.objects.filter(credit_purchase=self.purchase).count(), 1)
 
     def test_allocation_does_not_create_customer_payment(self):
-        CreditBalance.objects.create(purchase=self.purchase)
         customer = Customer.objects.create(name="No Payment Customer")
         CustomerCreditAllocation.objects.create(
             customer=customer,
@@ -76,10 +75,7 @@ class CreditPurchaseCurrencyTests(TestCase):
             self.currency.delete()
 
     def test_exchange_rate_snapshot_and_allocation_cost_are_unchanged(self):
-        balance = CreditBalance.objects.create(
-            purchase=self.purchase,
-            used_credit_usd=Decimal("0.00"),
-        )
+        balance = CreditBalance.objects.get(purchase=self.purchase)
         customer = Customer.objects.create(name="Snapshot Customer")
         allocation = CustomerCreditAllocation.objects.create(
             customer=customer,
@@ -97,10 +93,7 @@ class CreditPurchaseCurrencyTests(TestCase):
         self.assertEqual(balance.remaining_credit_usd, Decimal("60.00"))
 
     def test_new_balance_always_starts_as_unused_inventory(self):
-        balance = CreditBalance.objects.create(
-            purchase=self.purchase,
-            used_credit_usd=Decimal("100.00"),
-        )
+        balance = CreditBalance.objects.get(purchase=self.purchase)
 
         self.assertEqual(balance.total_credit_usd, Decimal("100.00"))
         self.assertEqual(balance.used_credit_usd, Decimal("0.00"))

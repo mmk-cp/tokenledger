@@ -120,10 +120,6 @@ class DashboardTests(TestCase):
             paid_currency=Currency.objects.get(code="USD"),
             exchange_rate=Decimal("1.00"),
         )
-        CreditBalance.objects.create(
-            purchase=purchase,
-            used_credit_usd=Decimal("0.00"),
-        )
         customer = Customer.objects.create(name="Dashboard Customer")
         CustomerCreditAllocation.objects.create(
             customer=customer,
@@ -351,7 +347,6 @@ class CustomerAdminTests(TestCase):
             paid_currency=Currency.objects.get(code="USD"),
             exchange_rate=Decimal("1.00"),
         )
-        CreditBalance.objects.create(purchase=purchase, used_credit_usd=Decimal("0"))
         CustomerCreditAllocation.objects.create(
             customer=self.customer,
             credit_purchase=purchase,
