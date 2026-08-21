@@ -112,6 +112,15 @@ These features can be integrated separately when needed.
 
 ## Technology
 
+## Docker translations
+
+The Docker image installs GNU gettext and runs `python manage.py compilemessages` before Gunicorn starts, so Persian admin translations are available in the container. Rebuild the web image after changing files under `locale/`:
+
+```bash
+docker compose build web
+docker compose up -d
+```
+
 
 - Python 3.12
 - Django 5.2 LTS

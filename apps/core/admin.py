@@ -10,6 +10,7 @@ from django.contrib.auth.models import Group
 from django.db.models import DecimalField, F, Func, IntegerField, Q, Sum, Value
 from django.db.models.functions import Coalesce
 from django.http import HttpRequest
+from django.utils.translation import gettext as _
 from django.utils import timezone
 from unfold.admin import ModelAdmin
 from unfold.forms import AdminPasswordChangeForm
@@ -398,15 +399,15 @@ def dashboard_callback(request: HttpRequest, context: dict) -> dict:
     context.update(
         {
             "dashboard_metrics": [
-                {"label": "Purchased Credit (USD)", "value": f"{purchased:,.2f}"},
-                {"label": "Allocated Credit (USD)", "value": f"{allocated:,.2f}"},
+                {"label": _("Purchased Credit (USD)"), "value": f"{purchased:,.2f}"},
+                {"label": _("Allocated Credit (USD)"), "value": f"{allocated:,.2f}"},
                 {
-                    "label": "Remaining Available Credit (USD)",
+                    "label": _("Remaining Available Credit (USD)"),
                     "value": f"{purchased - allocated:,.2f}",
                 },
-                {"label": "Total Customers", "value": f"{Customer.objects.count():,}"},
+                {"label": _("Total Customers"), "value": f"{Customer.objects.count():,}"},
                 {
-                    "label": "Active Customers",
+                    "label": _("Active Customers"),
                     "value": f"{Customer.objects.filter(status=Customer.Status.ACTIVE).count():,}",
                 },
                 {
@@ -442,7 +443,7 @@ def dashboard_callback(request: HttpRequest, context: dict) -> dict:
                     "label": f"Net Cash Flow ({DASHBOARD_CURRENCY})",
                     "value": f"{received - spent:,.2f}",
                 },
-                {"label": "Estimated Profit (USD)", "value": f"{profit:,.2f}"},
+                {"label": _("Estimated Profit (USD)"), "value": f"{profit:,.2f}"},
             ],
             "financial_report": {
                 "revenue": received,

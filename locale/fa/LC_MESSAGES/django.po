@@ -1,0 +1,37 @@
+msgid ""
+msgstr ""
+"Language: fa\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "English"
+msgstr "انگلیسی"
+
+msgid "Persian"
+msgstr "فارسی"
+
+msgid "Expiring Credits"
+msgstr "اعتبارهای در حال انقضا"
+
+msgid "Expired Credits"
+msgstr "اعتبارهای منقضی‌شده"
+
+msgid "Financial Summary Report"
+msgstr "گزارش خلاصه مالی"
+
+msgid "Provider Overview"
+msgstr "نمای کلی ارائه‌دهندگان"
+
+msgid "Wallet Movements"
+msgstr "گردش کیف پول‌ها"
+
+msgid "Pending Visibility"
+msgstr "موارد در انتظار"
+
+msgid "No customer data yet."
+msgstr "هنوز داده‌ای برای مشتریان وجود ندارد."
+
+msgid "No provider data yet."
+msgstr "هنوز داده‌ای برای ارائه‌دهندگان وجود ندارد."
+
+msgid "No wallet transactions yet."
+msgstr "هنوز تراکنشی برای کیف پول‌ها وجود ندارد."

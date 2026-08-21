@@ -109,7 +109,8 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 LANGUAGE_CODE = "en-us"
-LANGUAGES = [("en", "English")]
+LANGUAGES = [("en", "English"), ("fa", "Persian")]
+LOCALE_PATHS = [BASE_DIR / "locale"]
 TIME_ZONE = env("TIME_ZONE", default="UTC")
 USE_I18N = True
 USE_TZ = True

@@ -2,6 +2,16 @@
 
 {% load i18n unfold %}
 
+{% block extrahead %}
+    {{ block.super }}
+    <style>
+        html[lang="fa"] body { direction: rtl; }
+        html[lang="fa"] #nav-sidebar { left: auto; right: 0; border-left: 1px solid var(--color-base-200); border-right: 0; }
+        html[lang="fa"] .text-right { text-align: left; }
+        html[lang="fa"] table { direction: rtl; }
+    </style>
+{% endblock %}
+
 {% block title %}{{ title }} | {{ site_title }}{% endblock %}
 
 {% block branding %}
@@ -10,6 +20,14 @@
 
 {% block content %}
     <div class="flex flex-col gap-8">
+        <div class="flex justify-end gap-3 text-sm">
+            <form action="{% url 'set_language' %}" method="post" class="flex gap-2 items-center">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <button name="language" value="en" type="submit">English</button>
+                <button name="language" value="fa" type="submit">فارسی</button>
+            </form>
+        </div>
         <section class="gap-3 grid md:grid-cols-2 xl:grid-cols-3">
             {% for metric in dashboard_metrics %}
                 <div class="bg-white border border-base-200 p-5 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
@@ -21,7 +39,7 @@
 
         <section class="gap-8 grid lg:grid-cols-2">
             <div class="bg-white border border-base-200 p-5 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
-                <h2 class="font-semibold text-base-900 text-lg dark:text-white">Expiring Credits</h2>
+                <h2 class="font-semibold text-base-900 text-lg dark:text-white">{% trans "Expiring Credits" %}</h2>
                 <div class="mt-4 space-y-3 text-sm">
                     {% for item in expiring_credits %}
                         <div class="border-b border-base-100 flex justify-between gap-4 pb-3 dark:border-base-800">
@@ -32,7 +50,7 @@
                 </div>
             </div>
             <div class="bg-white border border-base-200 p-5 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
-                <h2 class="font-semibold text-base-900 text-lg dark:text-white">Expired Credits</h2>
+                <h2 class="font-semibold text-base-900 text-lg dark:text-white">{% trans "Expired Credits" %}</h2>
                 <div class="mt-4 space-y-3 text-sm">
                     {% for item in expired_credits %}
                         <div class="border-b border-base-100 flex justify-between gap-4 pb-3 dark:border-base-800">
@@ -45,7 +63,7 @@
         </section>
 
         <section class="bg-white border border-base-200 p-5 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
-            <h2 class="font-semibold text-base-900 text-lg dark:text-white">Financial Summary Report</h2>
+            <h2 class="font-semibold text-base-900 text-lg dark:text-white">{% trans "Financial Summary Report" %}</h2>
             <div class="gap-3 grid md:grid-cols-3 xl:grid-cols-4 mt-4 text-sm">
                 <div><p class="text-base-500">Revenue (USD)</p><p class="font-semibold mt-1">{{ financial_report.revenue|floatformat:2 }}</p></div>
                 <div><p class="text-base-500">Costs (USD)</p><p class="font-semibold mt-1">{{ financial_report.costs|floatformat:2 }}</p></div>
@@ -68,17 +86,17 @@
 
         <section class="gap-8 grid lg:grid-cols-2">
             <div class="bg-white border border-base-200 p-5 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
-                <h2 class="font-semibold text-base-900 text-lg dark:text-white">Provider Overview</h2>
+                <h2 class="font-semibold text-base-900 text-lg dark:text-white">{% trans "Provider Overview" %}</h2>
                 <div class="mt-4 space-y-3 text-sm">{% for provider in provider_overview %}<div class="border-b border-base-100 pb-3 dark:border-base-800"><div class="flex justify-between"><span>{{ provider.name }}</span><span>{{ provider.estimated_profit|floatformat:2 }} USD profit</span></div><div class="text-base-500 mt-1">Purchased {{ provider.purchased_credit|floatformat:2 }} · Allocated {{ provider.allocated_credit|floatformat:2 }} USD</div></div>{% empty %}<p class="text-base-500">No provider data yet.</p>{% endfor %}</div>
             </div>
             <div class="bg-white border border-base-200 p-5 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
-                <h2 class="font-semibold text-base-900 text-lg dark:text-white">Wallet Movements</h2>
+                <h2 class="font-semibold text-base-900 text-lg dark:text-white">{% trans "Wallet Movements" %}</h2>
                 <div class="mt-4 space-y-3 text-sm">{% for wallet in wallet_movements %}<div class="flex justify-between border-b border-base-100 pb-3 dark:border-base-800"><span>{{ wallet.wallet__name }}</span><span>In {{ wallet.money_in|floatformat:2 }} · Out {{ wallet.money_out|floatformat:2 }}</span></div>{% empty %}<p class="text-base-500">No wallet transactions yet.</p>{% endfor %}</div>
             </div>
         </section>
 
         <section class="bg-white border border-base-200 p-5 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
-            <h2 class="font-semibold text-base-900 text-lg dark:text-white">Pending Visibility</h2>
+            <h2 class="font-semibold text-base-900 text-lg dark:text-white">{% trans "Pending Visibility" %}</h2>
             <div class="gap-3 grid md:grid-cols-4 mt-4 text-sm"><div><p class="text-base-500">Active Purchases</p><p class="font-semibold mt-1">{{ pending_visibility.active_purchases }}</p></div><div><p class="text-base-500">Expiring Purchases</p><p class="font-semibold mt-1">{{ pending_visibility.expiring_purchases }}</p></div><div><p class="text-base-500">Active Allocations</p><p class="font-semibold mt-1">{{ pending_visibility.active_allocations }}</p></div><div><p class="text-base-500">Remaining Available Credit (USD)</p><p class="font-semibold mt-1">{{ pending_visibility.remaining_available_credit|floatformat:2 }}</p></div></div>
         </section>
 

@@ -7,7 +7,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 RUN apt-get update \
-    && apt-get install --yes --no-install-recommends build-essential default-libmysqlclient-dev pkg-config \
+    && apt-get install --yes --no-install-recommends build-essential default-libmysqlclient-dev pkg-config gettext \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
@@ -23,5 +23,4 @@ USER tokenledger
 
 EXPOSE 8000
 
-CMD ["/bin/sh", "-c", "python manage.py migrate --noinput && python manage.py collectstatic --noinput && exec gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --access-logfile - --error-logfile -"]
-
+CMD ["/bin/sh", "-c", "python manage.py migrate --noinput && python manage.py compilemessages --ignore=venv --ignore=staticfiles && python manage.py collectstatic --noinput && exec gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --access-logfile - --error-logfile -"]
