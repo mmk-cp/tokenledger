@@ -3,7 +3,11 @@
 from django.contrib import admin
 
 from apps.core.admin import BaseModelAdmin
-from apps.credits.models import CreditBalance, CreditPurchase
+from apps.credits.models import (
+    CreditBalance,
+    CreditPurchase,
+    CustomerCreditAllocation,
+)
 
 
 @admin.register(CreditPurchase)
@@ -89,3 +93,60 @@ class CreditBalanceAdmin(BaseModelAdmin):
         ),
         ("Timestamps", {"fields": ("created_at", "updated_at")}),
     )
+
+
+@admin.register(CustomerCreditAllocation)
+class CustomerCreditAllocationAdmin(BaseModelAdmin):
+    """Unfold administration for reseller credit assignments."""
+
+    list_display = (
+        "customer",
+        "provider",
+        "allocated_credit_usd",
+        "remaining_credit_usd",
+        "cost_price_usd",
+        "selling_price_usd",
+        "profit_usd",
+        "status",
+        "expire_date",
+    )
+    list_filter = ("provider", "status", "expire_date")
+    search_fields = ("customer__name", "customer__company_name", "provider__name")
+    ordering = ("-start_date", "-created_at")
+    list_select_related = ("customer", "provider", "credit_purchase")
+    readonly_fields = (
+        "provider",
+        "remaining_credit_usd",
+        "profit_usd_display",
+        "created_at",
+        "updated_at",
+    )
+    fieldsets = (
+        (
+            "Customer Information",
+            {"fields": ("customer", "status")},
+        ),
+        (
+            "Credit Source",
+            {"fields": ("credit_purchase", "provider")},
+        ),
+        (
+            "Financial Information",
+            {
+                "fields": (
+                    "allocated_credit_usd",
+                    "cost_price_usd",
+                    "selling_price_usd",
+                    "remaining_credit_usd",
+                    "profit_usd_display",
+                )
+            },
+        ),
+        ("Validity", {"fields": ("start_date", "expire_date")}),
+        ("Notes", {"fields": ("notes",)}),
+        ("Timestamps", {"fields": ("created_at", "updated_at")}),
+    )
+
+    @admin.display(description="Profit (USD)")
+    def profit_usd_display(self, obj: CustomerCreditAllocation):
+        return obj.profit_usd
