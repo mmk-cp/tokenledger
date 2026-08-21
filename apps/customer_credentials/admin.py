@@ -10,15 +10,15 @@ from apps.customer_credentials.models import CustomerCredential
 @admin.register(CustomerCredential)
 class CustomerCredentialAdmin(BaseModelAdmin):
     form = CustomerCredentialAdminForm
-    list_display = ("customer", "provider", "endpoint", "credit_allocation", "assigned_credit_usd", "selling_price_usd", "status", "expire_date")
+    list_display = ("customer", "provider", "endpoint", "credit_allocation", "assigned_credit_display", "cost_price_display", "selling_price_display", "status", "expire_date")
     list_filter = ("provider", "status", "expire_date", "credit_allocation")
     search_fields = ("customer__name", "customer__company_name", "provider__name", "endpoint__name", "credit_allocation__customer__name")
     list_select_related = ("customer", "provider", "endpoint", "credit_allocation")
-    readonly_fields = ("masked_api_key_display", "created_at", "updated_at")
+    readonly_fields = ("masked_api_key_display", "allocation_financial_summary", "created_at", "updated_at")
     fieldsets = (
         (_("Assignment"), {"fields": ("customer", "provider", "endpoint", "credit_allocation", "status")} ),
         (_("Credential"), {"fields": ("api_key", "masked_api_key_display")} ),
-        (_("Financial Information"), {"fields": ("assigned_credit_usd", "cost_price_usd", "selling_price_usd")} ),
+        (_("Financial Information"), {"fields": ("allocation_financial_summary",)}),
         (_("Validity"), {"fields": ("start_date", "expire_date")} ),
         (_("Notes"), {"fields": ("notes",)}),
         (_("Timestamps"), {"fields": ("created_at", "updated_at")} ),
@@ -47,3 +47,32 @@ class CustomerCredentialAdmin(BaseModelAdmin):
     @admin.display(description=_("API key"))
     def masked_api_key_display(self, obj):
         return obj.masked_api_key
+
+    def _allocation_value(self, obj, field):
+        allocation = getattr(obj, "credit_allocation", None)
+        return getattr(allocation, field, "-") if allocation else "-"
+
+    @admin.display(description=_("Assigned credit USD"))
+    def assigned_credit_display(self, obj):
+        return self._allocation_value(obj, "allocated_credit_usd")
+
+    @admin.display(description=_("Cost price USD"))
+    def cost_price_display(self, obj):
+        return self._allocation_value(obj, "cost_price_usd")
+
+    @admin.display(description=_("Selling price USD"))
+    def selling_price_display(self, obj):
+        return self._allocation_value(obj, "selling_price_usd")
+
+    @admin.display(description=_("Allocation financial summary"))
+    def allocation_financial_summary(self, obj):
+        allocation = getattr(obj, "credit_allocation", None)
+        if not allocation:
+            return _("No credit allocation linked.")
+        return _(
+            "Allocated: %(allocated)s USD | Cost: %(cost)s USD | Selling: %(selling)s USD"
+        ) % {
+            "allocated": f"{allocation.allocated_credit_usd:.2f}",
+            "cost": f"{allocation.cost_price_usd or 0:.2f}",
+            "selling": f"{allocation.selling_price_usd:.2f}",
+        }

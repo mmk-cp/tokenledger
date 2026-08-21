@@ -54,12 +54,10 @@ class CustomerCredentialAllocationTests(TestCase):
         expiration = date(2026, 9, 10)
         self.credential(
             credit_allocation=self.allocation,
-            assigned_credit_usd=Decimal("20.00"),
             expire_date=expiration,
         ).save()
         self.credential(
             status=CustomerCredential.Status.CANCELLED,
-            assigned_credit_usd=Decimal("5.00"),
         ).save()
         customer_admin = CustomerAdmin(Customer, admin.site)
         request = RequestFactory().get("/admin/customers/customer/")

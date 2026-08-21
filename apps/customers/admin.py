@@ -46,7 +46,6 @@ class CustomerCredentialInline(TabularInline):
         "provider",
         "endpoint",
         "credit_allocation",
-        "assigned_credit_usd",
         "status",
         "expire_date",
     )
@@ -271,7 +270,7 @@ class CustomerAdmin(BaseModelAdmin):
             ),
             active_credit=Coalesce(
                 Sum(
-                    "assigned_credit_usd",
+                    "credit_allocation__allocated_credit_usd",
                     filter=Q(status=CustomerCredential.Status.ACTIVE),
                 ),
                 Value(0),

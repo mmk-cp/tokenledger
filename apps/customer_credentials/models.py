@@ -1,7 +1,4 @@
-from decimal import Decimal
-
 from django.core.exceptions import ValidationError
-from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
@@ -28,9 +25,6 @@ class CustomerCredential(TimeStampedModel):
         blank=True,
     )
     api_key = models.TextField(blank=True)
-    assigned_credit_usd = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal("0.00"), validators=[MinValueValidator(Decimal("0.00"))])
-    cost_price_usd = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal("0.00"), validators=[MinValueValidator(Decimal("0.00"))])
-    selling_price_usd = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal("0.00"), validators=[MinValueValidator(Decimal("0.00"))])
     start_date = models.DateField()
     expire_date = models.DateField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.ACTIVE, db_index=True)
