@@ -1,17 +1,22 @@
 """Shared Unfold admin helpers and dashboard context."""
 
+from datetime import timedelta
+from decimal import Decimal
+
 from django.contrib import admin
 from django.contrib.auth.admin import GroupAdmin as BaseGroupAdmin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import Group
-from django.db.models import Sum
+from django.db.models import F, Func, IntegerField, Sum, Value
 from django.http import HttpRequest
+from django.utils import timezone
 from unfold.admin import ModelAdmin
 from unfold.forms import AdminPasswordChangeForm
 
 from apps.core.forms import UserChangeForm, UserCreationForm
 from apps.core.models import AuditLog, User
-from apps.credits.models import CustomerCreditAllocation, CreditPurchase
+from apps.currencies.services import CurrencyConversionError, convert_amount
+from apps.credits.models import CreditBalance, CustomerCreditAllocation, CreditPurchase
 from apps.customers.models import Customer
 from apps.transactions.models import Transaction
 
@@ -22,6 +27,9 @@ class BaseModelAdmin(ModelAdmin):
     list_per_page = 50
     save_on_top = True
     warn_unsaved_form = True
+
+
+DASHBOARD_CURRENCY = "USD"
 
 
 if admin.site.is_registered(Group):
@@ -157,6 +165,33 @@ class AuditLogAdmin(BaseModelAdmin):
         return False
 
 
+def _converted_transaction_total(
+    queryset,
+    conversion_factors: dict[tuple[str, object], Decimal | None],
+) -> Decimal:
+    """Return a dashboard-currency total, ignoring rows without a usable rate."""
+    total = Decimal("0")
+
+    for transaction in queryset.values("amount", "currency", "transaction_date").iterator():
+        rate_key = (transaction["currency"], transaction["transaction_date"])
+        if rate_key not in conversion_factors:
+            try:
+                conversion_factors[rate_key] = convert_amount(
+                    amount=Decimal("1"),
+                    from_currency=transaction["currency"],
+                    to_currency=DASHBOARD_CURRENCY,
+                    date=transaction["transaction_date"],
+                )
+            except CurrencyConversionError:
+                conversion_factors[rate_key] = None
+
+        factor = conversion_factors[rate_key]
+        if factor is not None:
+            total += transaction["amount"] * factor
+
+    return total
+
+
 def dashboard_callback(request: HttpRequest, context: dict) -> dict:
     """Build the authenticated staff dashboard from efficient ORM aggregates."""
     if not request.user.is_authenticated or not request.user.is_staff:
@@ -168,20 +203,48 @@ def dashboard_callback(request: HttpRequest, context: dict) -> dict:
     allocated = CustomerCreditAllocation.objects.aggregate(
         total=Sum("allocated_credit_usd")
     )["total"] or 0
-    received = Transaction.objects.filter(
-        transaction_type=Transaction.TransactionType.CUSTOMER_PAYMENT,
-        direction=Transaction.Direction.IN,
-    ).aggregate(total=Sum("amount"))["total"] or 0
-    spent = Transaction.objects.filter(
-        transaction_type__in=(
-            Transaction.TransactionType.PURCHASE,
-            Transaction.TransactionType.EXPENSE,
+    customer_credit_value = CustomerCreditAllocation.objects.filter(
+        status=CustomerCreditAllocation.Status.ACTIVE
+    ).aggregate(total=Sum("remaining_credit_usd"))["total"] or 0
+    available_credit = CreditBalance.objects.aggregate(
+        total=Sum("remaining_credit_usd")
+    )["total"] or 0
+    cost_basis = CustomerCreditAllocation.objects.aggregate(
+        total=Sum("cost_price_usd")
+    )["total"] or 0
+    conversion_factors: dict[tuple[str, object], Decimal | None] = {}
+    received = _converted_transaction_total(
+        Transaction.objects.filter(
+            transaction_type=Transaction.TransactionType.CUSTOMER_PAYMENT,
+            direction=Transaction.Direction.IN,
         ),
-        direction=Transaction.Direction.OUT,
-    ).aggregate(total=Sum("amount"))["total"] or 0
+        conversion_factors,
+    )
+    spent = _converted_transaction_total(
+        Transaction.objects.filter(
+            transaction_type__in=(
+                Transaction.TransactionType.PURCHASE,
+                Transaction.TransactionType.EXPENSE,
+            ),
+            direction=Transaction.Direction.OUT,
+        ),
+        conversion_factors,
+    )
     profit = CustomerCreditAllocation.objects.aggregate(
         total=Sum("selling_price_usd") - Sum("cost_price_usd")
     )["total"] or 0
+    today = timezone.localdate()
+    expiration_queryset = CustomerCreditAllocation.objects.filter(
+        status=CustomerCreditAllocation.Status.ACTIVE,
+        expire_date__isnull=False,
+    ).select_related("customer", "provider").annotate(
+        days_remaining=Func(
+            F("expire_date"),
+            Value(today),
+            function="DATEDIFF",
+            output_field=IntegerField(),
+        )
+    )
 
     context.update(
         {
@@ -197,9 +260,27 @@ def dashboard_callback(request: HttpRequest, context: dict) -> dict:
                     "label": "Active Customers",
                     "value": f"{Customer.objects.filter(status=Customer.Status.ACTIVE).count():,}",
                 },
-                {"label": "Money Received", "value": f"{received:,.2f}"},
-                {"label": "Money Spent", "value": f"{spent:,.2f}"},
-                {"label": "Net Cash Flow", "value": f"{received - spent:,.2f}"},
+                {
+                    "label": "Total Customer Credit Value (USD)",
+                    "value": f"{customer_credit_value:,.2f}",
+                },
+                {
+                    "label": "Total Available Credit (USD)",
+                    "value": f"{available_credit:,.2f}",
+                },
+                {"label": "Total Cost Basis (USD)", "value": f"{cost_basis:,.2f}"},
+                {
+                    "label": f"Money Received ({DASHBOARD_CURRENCY})",
+                    "value": f"{received:,.2f}",
+                },
+                {
+                    "label": f"Money Spent ({DASHBOARD_CURRENCY})",
+                    "value": f"{spent:,.2f}",
+                },
+                {
+                    "label": f"Net Cash Flow ({DASHBOARD_CURRENCY})",
+                    "value": f"{received - spent:,.2f}",
+                },
                 {"label": "Estimated Profit (USD)", "value": f"{profit:,.2f}"},
             ],
             "recent_transactions": Transaction.objects.select_related(
@@ -211,6 +292,13 @@ def dashboard_callback(request: HttpRequest, context: dict) -> dict:
             "recent_audit_logs": AuditLog.objects.select_related("user").order_by(
                 "-created_at"
             )[:5],
+            "expiring_credits": expiration_queryset.filter(
+                expire_date__gte=today,
+                expire_date__lte=today + timedelta(days=30),
+            ).order_by("expire_date", "customer__name")[:10],
+            "expired_credits": expiration_queryset.filter(
+                expire_date__lt=today,
+            ).order_by("-expire_date", "customer__name")[:10],
         }
     )
     return context

@@ -19,6 +19,31 @@
             {% endfor %}
         </section>
 
+        <section class="gap-8 grid lg:grid-cols-2">
+            <div class="bg-white border border-base-200 p-5 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
+                <h2 class="font-semibold text-base-900 text-lg dark:text-white">Expiring Credits</h2>
+                <div class="mt-4 space-y-3 text-sm">
+                    {% for item in expiring_credits %}
+                        <div class="border-b border-base-100 flex justify-between gap-4 pb-3 dark:border-base-800">
+                            <span>{{ item.customer }} · {{ item.provider }}</span>
+                            <span class="text-right">{{ item.remaining_credit_usd }} USD<br><span class="text-base-500">{{ item.expire_date }} · {{ item.days_remaining }} days</span></span>
+                        </div>
+                    {% empty %}<p class="text-base-500">No credits expire within 30 days.</p>{% endfor %}
+                </div>
+            </div>
+            <div class="bg-white border border-base-200 p-5 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
+                <h2 class="font-semibold text-base-900 text-lg dark:text-white">Expired Credits</h2>
+                <div class="mt-4 space-y-3 text-sm">
+                    {% for item in expired_credits %}
+                        <div class="border-b border-base-100 flex justify-between gap-4 pb-3 dark:border-base-800">
+                            <span>{{ item.customer }} · {{ item.provider }}</span>
+                            <span class="text-right">{{ item.remaining_credit_usd }} USD<br><span class="text-base-500">{{ item.expire_date }}</span></span>
+                        </div>
+                    {% empty %}<p class="text-base-500">No expired active credits.</p>{% endfor %}
+                </div>
+            </div>
+        </section>
+
         <section class="gap-8 grid lg:grid-cols-3">
             <div class="bg-white border border-base-200 p-5 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
                 <h2 class="font-semibold text-base-900 text-lg dark:text-white">Recent Transactions</h2>

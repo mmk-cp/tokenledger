@@ -1,6 +1,10 @@
 """Unfold admin registrations for credit purchases and balances."""
 
+from datetime import timedelta
+
 from django.contrib import admin
+from django.db.models import F, Func, IntegerField, Value
+from django.utils import timezone
 
 from apps.core.admin import BaseModelAdmin
 from apps.credits.models import (
@@ -8,6 +12,32 @@ from apps.credits.models import (
     CreditPurchase,
     CustomerCreditAllocation,
 )
+
+
+class ExpirationFilter(admin.SimpleListFilter):
+    title = "Expiration"
+    parameter_name = "expiration"
+
+    def lookups(self, request, model_admin):
+        return (
+            ("active", "Active"),
+            ("expiring", "Expiring soon (30 days)"),
+            ("expired", "Expired"),
+        )
+
+    def queryset(self, request, queryset):
+        today = timezone.localdate()
+        if self.value() == "active":
+            return queryset.filter(status=CustomerCreditAllocation.Status.ACTIVE)
+        if self.value() == "expiring":
+            return queryset.filter(
+                status=CustomerCreditAllocation.Status.ACTIVE,
+                expire_date__gte=today,
+                expire_date__lte=today + timedelta(days=30),
+            )
+        if self.value() == "expired":
+            return queryset.filter(expire_date__lt=today)
+        return queryset
 
 
 @admin.register(CreditPurchase)
@@ -102,15 +132,17 @@ class CustomerCreditAllocationAdmin(BaseModelAdmin):
     list_display = (
         "customer",
         "provider",
+        "credit_purchase",
         "allocated_credit_usd",
         "remaining_credit_usd",
         "cost_price_usd",
         "selling_price_usd",
         "profit_usd",
-        "status",
         "expire_date",
+        "days_until_expiration_display",
+        "status",
     )
-    list_filter = ("provider", "status", "expire_date")
+    list_filter = ("provider", ExpirationFilter, "expire_date")
     search_fields = ("customer__name", "customer__company_name", "provider__name")
     ordering = ("-start_date", "-created_at")
     list_select_related = ("customer", "provider", "credit_purchase")
@@ -150,3 +182,19 @@ class CustomerCreditAllocationAdmin(BaseModelAdmin):
     @admin.display(description="Profit (USD)")
     def profit_usd_display(self, obj: CustomerCreditAllocation):
         return obj.profit_usd
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).annotate(
+            admin_days_until_expiration=Func(
+                F("expire_date"),
+                Value(timezone.localdate()),
+                function="DATEDIFF",
+                output_field=IntegerField(),
+            )
+        )
+
+    @admin.display(description="Days Until Expiration", ordering="admin_days_until_expiration")
+    def days_until_expiration_display(self, obj: CustomerCreditAllocation):
+        if obj.expire_date is None:
+            return "-"
+        return obj.admin_days_until_expiration

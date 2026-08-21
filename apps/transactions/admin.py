@@ -29,6 +29,8 @@ class TransactionAdmin(BaseModelAdmin):
         "expense_category",
         "counterparty",
         "customer",
+        "allocation",
+        "credit_purchase",
         "wallet",
         "transaction_date",
     )
@@ -45,6 +47,9 @@ class TransactionAdmin(BaseModelAdmin):
         "counterparty",
         "external_reference",
         "expense_category__name",
+        "allocation__customer__name",
+        "credit_purchase__name",
+        "credit_purchase__provider__name",
         "customer__name",
         "customer__company_name",
     )
