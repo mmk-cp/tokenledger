@@ -66,6 +66,22 @@
             {% endfor %}
         </section>
 
+        <section class="gap-8 grid lg:grid-cols-2">
+            <div class="bg-white border border-base-200 p-5 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
+                <h2 class="font-semibold text-base-900 text-lg dark:text-white">Provider Overview</h2>
+                <div class="mt-4 space-y-3 text-sm">{% for provider in provider_overview %}<div class="border-b border-base-100 pb-3 dark:border-base-800"><div class="flex justify-between"><span>{{ provider.name }}</span><span>{{ provider.estimated_profit|floatformat:2 }} USD profit</span></div><div class="text-base-500 mt-1">Purchased {{ provider.purchased_credit|floatformat:2 }} · Allocated {{ provider.allocated_credit|floatformat:2 }} USD</div></div>{% empty %}<p class="text-base-500">No provider data yet.</p>{% endfor %}</div>
+            </div>
+            <div class="bg-white border border-base-200 p-5 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
+                <h2 class="font-semibold text-base-900 text-lg dark:text-white">Wallet Movements</h2>
+                <div class="mt-4 space-y-3 text-sm">{% for wallet in wallet_movements %}<div class="flex justify-between border-b border-base-100 pb-3 dark:border-base-800"><span>{{ wallet.wallet__name }}</span><span>In {{ wallet.money_in|floatformat:2 }} · Out {{ wallet.money_out|floatformat:2 }}</span></div>{% empty %}<p class="text-base-500">No wallet transactions yet.</p>{% endfor %}</div>
+            </div>
+        </section>
+
+        <section class="bg-white border border-base-200 p-5 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
+            <h2 class="font-semibold text-base-900 text-lg dark:text-white">Pending Visibility</h2>
+            <div class="gap-3 grid md:grid-cols-4 mt-4 text-sm"><div><p class="text-base-500">Active Purchases</p><p class="font-semibold mt-1">{{ pending_visibility.active_purchases }}</p></div><div><p class="text-base-500">Expiring Purchases</p><p class="font-semibold mt-1">{{ pending_visibility.expiring_purchases }}</p></div><div><p class="text-base-500">Active Allocations</p><p class="font-semibold mt-1">{{ pending_visibility.active_allocations }}</p></div><div><p class="text-base-500">Remaining Available Credit (USD)</p><p class="font-semibold mt-1">{{ pending_visibility.remaining_available_credit|floatformat:2 }}</p></div></div>
+        </section>
+
         <section class="gap-8 grid lg:grid-cols-3">
             <div class="bg-white border border-base-200 p-5 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
                 <h2 class="font-semibold text-base-900 text-lg dark:text-white">Recent Transactions</h2>

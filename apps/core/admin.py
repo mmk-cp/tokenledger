@@ -7,7 +7,8 @@ from django.contrib import admin
 from django.contrib.auth.admin import GroupAdmin as BaseGroupAdmin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import Group
-from django.db.models import F, Func, IntegerField, Sum, Value
+from django.db.models import DecimalField, F, Func, IntegerField, Q, Sum, Value
+from django.db.models.functions import Coalesce
 from django.http import HttpRequest
 from django.utils import timezone
 from unfold.admin import ModelAdmin
@@ -18,6 +19,7 @@ from apps.core.models import AuditLog, User
 from apps.currencies.services import CurrencyConversionError, convert_amount
 from apps.credits.models import CreditBalance, CustomerCreditAllocation, CreditPurchase
 from apps.customers.models import Customer
+from apps.providers.models import Provider
 from apps.transactions.models import Transaction
 
 
@@ -363,7 +365,22 @@ def dashboard_callback(request: HttpRequest, context: dict) -> dict:
         ),
         conversion_factors,
     )
+    provider_overview = list(
+        Provider.objects.annotate(
+            purchased_credit=Coalesce(Sum("credit_purchases__credit_amount_usd"), Value(0), output_field=DecimalField(max_digits=20, decimal_places=2)),
+            allocated_credit=Coalesce(Sum("customer_credit_allocations__allocated_credit_usd"), Value(0), output_field=DecimalField(max_digits=20, decimal_places=2)),
+            estimated_profit=Coalesce(Sum("customer_credit_allocations__selling_price_usd") - Sum("customer_credit_allocations__cost_price_usd"), Value(0), output_field=DecimalField(max_digits=20, decimal_places=2)),
+        ).values("name", "purchased_credit", "allocated_credit", "estimated_profit").order_by("name")[:10]
+    )
+    wallet_movements = list(
+        Transaction.objects.filter(wallet__isnull=False).values("wallet__name").annotate(
+            money_in=Coalesce(Sum("amount", filter=Q(direction=Transaction.Direction.IN)), Value(0), output_field=DecimalField(max_digits=20, decimal_places=8)),
+            money_out=Coalesce(Sum("amount", filter=Q(direction=Transaction.Direction.OUT)), Value(0), output_field=DecimalField(max_digits=20, decimal_places=8)),
+        ).order_by("wallet__name")[:10]
+    )
     today = timezone.localdate()
+    pending_purchases = CreditPurchase.objects.filter(status=CreditPurchase.Status.ACTIVE)
+    pending_allocations = CustomerCreditAllocation.objects.filter(status=CustomerCreditAllocation.Status.ACTIVE)
     expiration_queryset = CustomerCreditAllocation.objects.filter(
         status=CustomerCreditAllocation.Status.ACTIVE,
         expire_date__isnull=False,
@@ -444,6 +461,14 @@ def dashboard_callback(request: HttpRequest, context: dict) -> dict:
                 ("Top Customers by Revenue", top_revenue),
                 ("Top Customers by Profit", top_profit),
             ),
+            "provider_overview": provider_overview,
+            "wallet_movements": wallet_movements,
+            "pending_visibility": {
+                "active_purchases": pending_purchases.count(),
+                "expiring_purchases": pending_purchases.filter(expire_date__isnull=False, expire_date__gte=today, expire_date__lte=today + timedelta(days=30)).count(),
+                "active_allocations": pending_allocations.count(),
+                "remaining_available_credit": available_credit,
+            },
             "recent_transactions": Transaction.objects.select_related(
                 "customer", "expense_category"
             ).order_by("-created_at")[:5],
